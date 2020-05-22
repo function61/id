@@ -10,6 +10,12 @@ auth gateway (that sets the cookie).
 NOTE: graphics are to improve soon :D
 
 
+Architecture
+------------
+
+![](docs/architecture.png)
+
+
 Status
 ------
 
