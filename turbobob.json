@@ -1,0 +1,21 @@
+{
+	"for_description_of_this_file_see": "https://github.com/function61/turbobob",
+	"version_major": 1,
+	"project_name": "id",
+	"builders": [
+		{
+			"name": "default",
+			"uses": "docker://fn61/buildkit-golang:20200423_1235_75c6eae7",
+			"mount_destination": "/workspace",
+			"workdir": "/workspace",
+			"commands": {
+				"build": ["bin/build.sh"],
+				"dev": ["bash"]
+			},
+			"dev_http_ingress": "80"
+		}
+	],
+	"os_arches": {
+		"linux-amd64": true
+	}
+}
