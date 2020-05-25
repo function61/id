@@ -7,8 +7,6 @@ auth gateway (that sets the cookie).
 
 ![](docs/screenshot.png)
 
-NOTE: graphics are to improve soon :D
-
 
 Architecture
 ------------

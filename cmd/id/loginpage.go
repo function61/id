@@ -7,58 +7,130 @@ import (
 var loginHtmlTpl, _ = template.New("_").Parse(`
 <!doctype html>
 
-<html>
+<html lang="en">
 <head>
-	<title>Login</title>
-	<style>
-	th {
-		text-align: left;
-	}
+   <title>Login</title>
+   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
 
-	.passive {
-		color: #c0c0c0;
-	}
-	</style>
+   <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+   <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+
+   <style>
+   body {
+      background: #ecedef;
+      margin-top: 150px;
+   }
+
+   .text-muted {
+      color: #bfbfbf !important;
+   }
+
+   .card-img-overlay {
+      text-shadow: 1px 1px #c0c0c0;
+      bottom: unset; /* by default, Bootstrap sets 'bottom: 0;', i.e. eat the whole container */
+   }
+
+   .card-img-overlay.text-white {
+      text-shadow: 1px 1px #232323;
+   }
+
+   .input-group-text {
+      /* make email & password same widths */
+      min-width: 130px;
+   }
+
+   .anim-container {
+      /* need separate container for image-to-animate, so we can hide its overflow */
+      overflow: hidden;
+   }
+
+   .anim-container img {
+      animation: 15s linear infinite alternate zoomAndRotate;
+   }
+
+   @keyframes zoomAndRotate {
+      /* can't rotate for the first 25 % b/c there's not enough pixels
+         yet in the overflow area */
+      0% { transform: scale(1); }
+      25% { transform: scale(1.0625) rotate(0deg); }
+      100% { transform: scale(1.25) rotate(3deg); }
+   }
+   </style>
 </head>
+<body>
 
-<body style="width: 600px; margin: auto; text-align: center;">
+<div style="width: 576px; margin:auto;">
 
-<p>Logging in to</p>
+<div class="card">
+   <div class="anim-container">
+      <img src="{{.BackgroundImage}}" class="card-img-top" alt="Decoration image">
+   </div>
+  <div class="card-img-overlay text-white">
+   <h5 class="card-title">Sign in to</h5>
+   <p class="card-text" title="{{.Next}}"><span class="text-muted">https://</span>{{.NextHumanReadable}}<span class="text-muted">/</span></p>
+  </div>
+  <div class="card-body">
+   <!--
+   <center style="margin-bottom: 16px;">
+    <p class="card-text">to<br /><span class="text-muted">https://</span>{{.NextHumanReadable}}<span class="text-muted">/</span></p>
+   </center>
+  -->
 
-<p title="{{.Next}}">
-	<span class="passive">https://</span>{{.NextHumanReadable}}<span class="passive">/</span>
-</p>
+   <!--
+   <div class="media" style="margin-bottom: 16px;">
+     <img src="https://www.gravatar.com/avatar/00000000000000000000000000000000?d=identicon" style="width: 80px;" class="mr-3" alt="User's avatar">
+     <div class="media-body">
+       <h5 class="mt-0">
+         bob@example.com
+         <span class="dropdown">
+           <a class="btn btn-default dropdown-toggle" href="#" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"></a>
 
-<form action="" method="post">
-	<fieldset>
-		<legend>Login</legend>
+           <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
+             <a class="dropdown-item" href="#">Change user</a>
+           </div>
+         </span>
+         </h5>
+       Good to see you back!
+     </div>
+   </div>
+   -->
 
-		<table>
-		<tr>
-			<th>Email</th>
-			<td><input required type="text" name="email" placeholder="bob@example.com" /></td>
-		</tr>
-		<tr>
-			<th>Password</th>
-			<td><input required type="password" name="password" /></td>
-		</tr>
-		</table>
+   <form action="" method="post">
+      <div class="input-group input-group-lg mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">Email</span>
+        </div>
+        <input type="text" name="email" class="form-control" placeholder="bob@example.com" autofocus required aria-label="Email" aria-describedby="basic-addon1">
+        <!--
+        <div class="input-group-append">
+          <button class="btn btn-outline-primary" type="button" id="button-addon2">Next</button>
+        </div>
+        -->
+      </div>
 
-		<input type="submit" value="Login" />
-	</fieldset>
-</form>
+      <div class="input-group input-group-lg mb-3">
+        <div class="input-group-prepend">
+          <span class="input-group-text">Password</span>
+        </div>
+        <input name="password" type="password" class="form-control" required aria-label="Password" />
 
-<script defer>
-var rememberedUsername = localStorage.getItem('id-email');
-var emailField = document.querySelector('input[name=email]');
-if (rememberedUsername) {
-	emailField.value = rememberedUsername;
-}
-document.querySelector('form').onsubmit = function(e){
-	localStorage.setItem('id-email', emailField.value);
-}
-</script>
+        <div class="input-group-append">
+         <input type="submit" value="Log in" class="btn btn-outline-primary" id="button-addon2" />
+        </div>
+      </div>
+   </form>
+
+   <p style="text-align: center;">
+      <a href="javascript:alert('Feature not done yet :(')">Forgot password?</a>
+   </p>
+  </div>
+</div>
+
+<p class="text-muted" style="text-align: center;">Single sign-on provided by function61.com</p>
+</div>
 
 </body>
 </html>
+
 `)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"strings"
@@ -21,6 +22,8 @@ import (
 
 func newHttpHandler() (http.Handler, error) {
 	router := mux.NewRouter()
+
+	rand.Seed(time.Now().UnixNano())
 
 	signer, signerPublicKey, err := loadSignerAndPublicKey()
 	if err != nil {
@@ -46,9 +49,11 @@ func newHttpHandler() (http.Handler, error) {
 		if err := loginHtmlTpl.Execute(w, struct {
 			Next              string
 			NextHumanReadable string
+			BackgroundImage   string
 		}{
 			Next:              nextValidated.String(),
 			NextHumanReadable: nextValidated.Host,
+			BackgroundImage:   randomBackgroundImage(),
 		}); err != nil {
 			panic(err)
 		}
@@ -184,4 +189,13 @@ func loadSigningPrivateKey() ([]byte, error) {
 
 	// PEM (= base64) isn't allowed to contain \ chars so this is OK
 	return []byte(strings.ReplaceAll(pk, `\n`, "\n")), nil
+}
+
+func randomBackgroundImage() string {
+	maxBackgroundNumber := 20
+
+	// Intn() returns between 1 and n-1 so we'll adjust to between (1, n)
+	return fmt.Sprintf(
+		"https://s3.amazonaws.com/files.function61.com/id-backgrounds/%d.jpg",
+		1+rand.Intn(maxBackgroundNumber))
 }
