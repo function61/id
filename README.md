@@ -30,7 +30,7 @@ Setting up
 ### Generate signing key
 
 ```console
-$ id genkey
+$ ./id genkey
 -----BEGIN PRIVATE KEY-----
 ...
 ...
@@ -58,7 +58,7 @@ Assuming you have an ID server at `https://example.com/id` and you know the user
 token, you can fetch the user's details from CLI by:
 
 ```console
-$ id client user-get https://example.com/id "$token"
+$ ./id client user-get https://example.com/id "$token"
 {
     "id": "E3aREYX7dBE",
     "created": "2020-05-21T00:00:00Z",
