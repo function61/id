@@ -38,49 +38,8 @@ func (c *Client) CreateAuthGateway(ctx context.Context, router *mux.Router) (*Ga
 	return g, nil
 }
 
-func (g *GatewayApi) registerGatewayRoutes(router *mux.Router) *GatewayApi {
-	// logs the user out from this website, but also the identity server
-	router.HandleFunc("/_auth/logout", func(w http.ResponseWriter, r *http.Request) {
-		httputils.NoCacheHeaders(w)
-
-		// TODO: validate session, so an attacker can't force logout of user? this could be
-		//       just enough due to cookie's SameSite=Strict ?
-
-		http.SetCookie(w, httpauth.DeleteLoginCookie())
-
-		http.Redirect(w, r, g.client.logoutUrl(), http.StatusFound)
-	})
-
-	router.HandleFunc("/_auth/redirect", func(w http.ResponseWriter, r *http.Request) {
-		next, err := validateRelativeRedirect(r.URL.Query().Get("next"))
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		jwt := r.URL.Query().Get("token")
-		if jwt == "" {
-			http.Error(w, "missing query param: token", http.StatusBadRequest)
-			return
-		}
-
-		// validate JWT before setting cookie, so an attacker controlling the query
-		// param can't set garbage JWT to force logout the user.
-		//
-		// the attacker still can set a valid JWT, so in effect can change victim's user.
-		if _, err := g.authenticator.AuthenticateJwtString(jwt); err != nil {
-			http.Error(w, "missing query param: jwt", http.StatusBadRequest)
-			return
-		}
-
-		http.SetCookie(w, httpauth.ToCookie(jwt))
-
-		httputils.NoCacheHeaders(w)
-
-		http.Redirect(w, r, next, http.StatusFound)
-	})
-
-	return g
+func (g *GatewayApi) LogoutUrl() string {
+	return "/_auth/logout"
 }
 
 // wraps inner Handler with protection: 1) authentication 2) authorization
@@ -144,8 +103,49 @@ func (g *GatewayApi) loginUrlContinueToGateway(continueAfterGateway string, r *h
 	return g.client.loginUrl(gateway)
 }
 
-func (g *GatewayApi) LogoutUrl() string {
-	return "/_auth/logout"
+func (g *GatewayApi) registerGatewayRoutes(router *mux.Router) *GatewayApi {
+	// logs the user out from this website, but also the identity server
+	router.HandleFunc("/_auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		httputils.NoCacheHeaders(w)
+
+		// TODO: validate session, so an attacker can't force logout of user? this could be
+		//       just enough due to cookie's SameSite=Strict ?
+
+		http.SetCookie(w, httpauth.DeleteLoginCookie())
+
+		http.Redirect(w, r, g.client.logoutUrl(), http.StatusFound)
+	})
+
+	router.HandleFunc("/_auth/redirect", func(w http.ResponseWriter, r *http.Request) {
+		next, err := validateRelativeRedirect(r.URL.Query().Get("next"))
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		jwt := r.URL.Query().Get("token")
+		if jwt == "" {
+			http.Error(w, "missing query param: token", http.StatusBadRequest)
+			return
+		}
+
+		// validate JWT before setting cookie, so an attacker controlling the query
+		// param can't set garbage JWT to force logout the user.
+		//
+		// the attacker still can set a valid JWT, so in effect can change victim's user.
+		if _, err := g.authenticator.AuthenticateJwtString(jwt); err != nil {
+			http.Error(w, "missing query param: jwt", http.StatusBadRequest)
+			return
+		}
+
+		http.SetCookie(w, httpauth.ToCookie(jwt))
+
+		httputils.NoCacheHeaders(w)
+
+		http.Redirect(w, r, next, http.StatusFound)
+	})
+
+	return g
 }
 
 func validateRelativeRedirect(path string) (string, error) {
