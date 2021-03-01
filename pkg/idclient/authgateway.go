@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/function61/gokit/httpauth"
 	"github.com/function61/gokit/httputils"
@@ -13,25 +14,27 @@ import (
 )
 
 type GatewayApi struct {
-	client        *Client
-	authenticator httpauth.HttpRequestAuthenticator
+	client               *Client
+	authenticator        httpauth.HttpRequestAuthenticator
+	authenticatorBuildMu sync.Mutex
 }
 
-// This auth gateway is required because the identity server cannot set cookies in our behalf.
+// This auth gateway is required because the identity server cannot set cookies on our behalf.
 // The auth gateway simply takes the auth token from URL param, sets cookie and redirects forward.
 
 func (c *Client) CreateAuthGateway(ctx context.Context, router *mux.Router) (*GatewayApi, error) {
-	publicKey, err := c.obtainPublicKey(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("obtainPublicKey: %w", err)
-	}
+	// we used to fetch the public key here, but that's not ideal. this CreateAuthGateway() is usually
+	// called on application startup to protect specified/all HTTP routes. if we were to error here,
+	// perhaps because network is down, it'd prevent starting the HTTP app.
+	//
+	// a better way is to require network connectivity only when it's needed, and defering this also
+	// gets us re-tries on errors, i.e.:
+	//
+	// 1. Req 1 needs authentication - we return 500 because we can't reach ID server
+	// 2. (ID server becomes back online)
+	// 3. Req 2 needs authentication - now succeeds because we re-try fetching pubkey (b/c no cached entry)
 
-	authenticator, err := httpauth.NewEcJwtAuthenticator(publicKey)
-	if err != nil {
-		return nil, err
-	}
-
-	g := &GatewayApi{c, authenticator}
+	g := &GatewayApi{client: c}
 
 	g.registerGatewayRoutes(router)
 
@@ -52,15 +55,21 @@ func (g *GatewayApi) Protect(authorizer Authorizer, authorizedHandler http.Handl
 	})
 }
 
-// returns UserDetails if user is authenticated & authorized
-// if returns nil, response was already sent
+// returns UserDetails if user is authenticated & authorized.
+// if returns nil, error response was already sent.
 func (g *GatewayApi) AuthenticateAndAuthorize(
 	w http.ResponseWriter,
 	r *http.Request,
 	authorizer Authorizer,
 ) *httpauth.UserDetails {
+	authenticator, err := g.getAuthenticator()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("getAuthenticator: %v", err), http.StatusInternalServerError)
+		return nil
+	}
+
 	// 1) authentication
-	authentication, err := g.authenticator.Authenticate(r)
+	authentication, err := authenticator.Authenticate(r)
 	if err != nil {
 		// don't just blindly redirect all requests like .js, .jpg, .css etc.
 		requestingHtml := strings.Contains(r.Header.Get("Accept"), "text/html")
@@ -130,11 +139,17 @@ func (g *GatewayApi) registerGatewayRoutes(router *mux.Router) *GatewayApi {
 			return
 		}
 
+		authenticator, err := g.getAuthenticator()
+		if err != nil {
+			http.Error(w, fmt.Sprintf("getAuthenticator: %v", err), http.StatusInternalServerError)
+			return
+		}
+
 		// validate JWT before setting cookie, so an attacker controlling the query
 		// param can't set garbage JWT to force logout the user.
 		//
 		// the attacker still can set a valid JWT, so in effect can change victim's user.
-		if _, err := g.authenticator.AuthenticateJwtString(jwt); err != nil {
+		if _, err := authenticator.AuthenticateJwtString(jwt); err != nil {
 			http.Error(w, "missing query param: jwt", http.StatusBadRequest)
 			return
 		}
@@ -147,6 +162,27 @@ func (g *GatewayApi) registerGatewayRoutes(router *mux.Router) *GatewayApi {
 	})
 
 	return g
+}
+
+func (g *GatewayApi) getAuthenticator() (httpauth.HttpRequestAuthenticator, error) {
+	g.authenticatorBuildMu.Lock()
+	defer g.authenticatorBuildMu.Unlock()
+
+	if g.authenticator == nil {
+		publicKey, err := g.client.obtainPublicKey(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("obtainPublicKey: %w", err)
+		}
+
+		authenticator, err := httpauth.NewEcJwtAuthenticator(publicKey)
+		if err != nil {
+			return nil, fmt.Errorf("NewEcJwtAuthenticator: %w", err)
+		}
+
+		g.authenticator = authenticator
+	}
+
+	return g.authenticator, nil
 }
 
 func validateRelativeRedirect(path string) (string, error) {
