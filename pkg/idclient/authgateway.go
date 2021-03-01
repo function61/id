@@ -23,7 +23,7 @@ type GatewayApi struct {
 func (c *Client) CreateAuthGateway(ctx context.Context, router *mux.Router) (*GatewayApi, error) {
 	publicKey, err := c.obtainPublicKey(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("obtainPublicKey: %w", err)
 	}
 
 	authenticator, err := httpauth.NewEcJwtAuthenticator(publicKey)
