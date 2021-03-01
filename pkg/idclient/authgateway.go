@@ -45,19 +45,20 @@ func (g *GatewayApi) LogoutUrl() string {
 // wraps inner Handler with protection: 1) authentication 2) authorization
 func (g *GatewayApi) Protect(authorizer Authorizer, authorizedHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// if this call returns false, response was also written
-		if g.authenticateAndAuthorize(w, r, authorizer) {
+		// if this call returns nil, response was also written
+		if g.AuthenticateAndAuthorize(w, r, authorizer) != nil {
 			authorizedHandler.ServeHTTP(w, r)
 		}
 	})
 }
 
-// as own function mainly to make it easier to audit in which cases authorizedHandler is used
-func (g *GatewayApi) authenticateAndAuthorize(
+// returns UserDetails if user is authenticated & authorized
+// if returns nil, response was already sent
+func (g *GatewayApi) AuthenticateAndAuthorize(
 	w http.ResponseWriter,
 	r *http.Request,
 	authorizer Authorizer,
-) bool {
+) *httpauth.UserDetails {
 	// 1) authentication
 	authentication, err := g.authenticator.Authenticate(r)
 	if err != nil {
@@ -72,7 +73,7 @@ func (g *GatewayApi) authenticateAndAuthorize(
 		} else {
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 		}
-		return false
+		return nil
 	}
 
 	// 2) authorization
@@ -81,10 +82,10 @@ func (g *GatewayApi) authenticateAndAuthorize(
 		//       maybe not. if endpoint requires admin privileges, it would be wrong to
 		//       kick out regular user
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-		return false
+		return nil
 	}
 
-	return true
+	return authentication
 }
 
 // continue to current path after logging in
