@@ -22,7 +22,7 @@ type GatewayApi struct {
 // This auth gateway is required because the identity server cannot set cookies on our behalf.
 // The auth gateway simply takes the auth token from URL param, sets cookie and redirects forward.
 
-func (c *Client) CreateAuthGateway(ctx context.Context, router *mux.Router) (*GatewayApi, error) {
+func (c *Client) CreateAuthGateway(ctx context.Context, router *mux.Router) *GatewayApi {
 	// we used to fetch the public key here, but that's not ideal. this CreateAuthGateway() is usually
 	// called on application startup to protect specified/all HTTP routes. if we were to error here,
 	// perhaps because network is down, it'd prevent starting the HTTP app.
@@ -38,7 +38,7 @@ func (c *Client) CreateAuthGateway(ctx context.Context, router *mux.Router) (*Ga
 
 	g.registerGatewayRoutes(router)
 
-	return g, nil
+	return g
 }
 
 func (g *GatewayApi) LogoutUrl() string {
