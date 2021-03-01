@@ -50,6 +50,25 @@
       100% { transform: scale(1.25) rotate(3deg); }
    }
    </style>
+   <script>
+   	window.onload = function() {
+   		var emailRemembered = localStorage.getItem('email');
+
+   		if (emailRemembered && emailEl().value === '') {
+   			emailEl().value = emailRemembered;
+
+   			document.querySelector('input[type=password]').focus();
+   		}
+   	}
+
+   	function rememberUsername() {
+   		localStorage.setItem('email', emailEl().value);
+   	}
+
+   	function emailEl() {
+   		return document.querySelector('input[name=email]');
+   	}
+   </script>
 </head>
 <body>
 
@@ -89,7 +108,7 @@
    </div>
    -->
 
-   <form action="" method="post">
+   <form action="" method="post" onsubmit="rememberUsername()">
       <div class="input-group input-group-lg mb-3">
         <div class="input-group-prepend">
           <span class="input-group-text">Email</span>
