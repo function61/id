@@ -1,6 +1,6 @@
 module github.com/function61/id
 
-go 1.14
+go 1.16
 
 require (
 	github.com/aws/aws-lambda-go v1.13.2

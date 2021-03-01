@@ -2,8 +2,10 @@ package main
 
 import (
 	"crypto/x509"
+	"embed"
 	"errors"
 	"fmt"
+	"html/template"
 	"log"
 	"math/rand"
 	"net/http"
@@ -19,6 +21,11 @@ import (
 	"github.com/function61/gokit/jsonfile"
 	"github.com/gorilla/mux"
 )
+
+//go:embed templates
+var templateFiles embed.FS
+
+var templates, _ = template.ParseFS(templateFiles, "templates/*.html")
 
 func newHttpHandler() (http.Handler, error) {
 	router := mux.NewRouter()
@@ -46,7 +53,7 @@ func newHttpHandler() (http.Handler, error) {
 
 		w.Header().Set("Content-Type", "text/html")
 
-		if err := loginHtmlTpl.Execute(w, struct {
+		if err := templates.Lookup("login.html").Execute(w, struct {
 			Next              string
 			NextHumanReadable string
 			BackgroundImage   string
