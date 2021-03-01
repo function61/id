@@ -13,7 +13,7 @@ import (
 	"github.com/function61/gokit/httpauth"
 	"github.com/function61/gokit/httputils"
 	"github.com/function61/gokit/logex"
-	"github.com/function61/gokit/ossignal"
+	"github.com/function61/gokit/osutil"
 	"github.com/function61/gokit/taskrunner"
 	"github.com/spf13/cobra"
 )
@@ -48,8 +48,8 @@ func main() {
 		Short: "Start the standalone server",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			exitIfError(runStandaloneRestApi(
-				ossignal.InterruptOrTerminateBackgroundCtx(rootLogger),
+			osutil.ExitIfError(runStandaloneRestApi(
+				osutil.CancelOnInterruptOrTerminate(rootLogger),
 				rootLogger))
 		},
 	})
@@ -60,7 +60,7 @@ func main() {
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			privateKey, _, err := httpauth.GenerateKey()
-			exitIfError(err)
+			osutil.ExitIfError(err)
 
 			fmt.Fprintln(os.Stdout, string(privateKey))
 		},
@@ -68,7 +68,7 @@ func main() {
 
 	app.AddCommand(clientEntry())
 
-	exitIfError(app.Execute())
+	osutil.ExitIfError(app.Execute())
 }
 
 // for standalone use
@@ -92,13 +92,6 @@ func runStandaloneRestApi(ctx context.Context, logger *log.Logger) error {
 	tasks.Start("listenershutdowner", httputils.ServerShutdownTask(srv))
 
 	return tasks.Wait()
-}
-
-func exitIfError(err error) {
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
 }
 
 // TODO: move to lambdautils?

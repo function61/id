@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"github.com/function61/gokit/jsonfile"
-	"github.com/function61/gokit/ossignal"
+	"github.com/function61/gokit/osutil"
 	"github.com/function61/id/pkg/idclient"
 	"github.com/spf13/cobra"
 )
@@ -27,8 +27,8 @@ func clientEntry() *cobra.Command {
 				serverUrl = idclient.Function61
 			}
 
-			exitIfError(userGet(
-				ossignal.InterruptOrTerminateBackgroundCtx(nil),
+			osutil.ExitIfError(userGet(
+				osutil.CancelOnInterruptOrTerminate(nil),
 				args[1],
 				serverUrl,
 				os.Stdout))
