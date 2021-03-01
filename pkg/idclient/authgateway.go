@@ -62,12 +62,12 @@ func (g *GatewayApi) AuthenticateAndAuthorize(
 	// 1) authentication
 	authentication, err := g.authenticator.Authenticate(r)
 	if err != nil {
-		// TODO: detect .jpg, .css, .js etc.
-		requestingAssets := false
+		// don't just blindly redirect all requests like .js, .jpg, .css etc.
+		requestingHtml := strings.Contains(r.Header.Get("Accept"), "text/html")
 
 		httputils.NoCacheHeaders(w)
 
-		if !requestingAssets {
+		if requestingHtml {
 			// return via our gateway that sets the auth token
 			http.Redirect(w, r, g.authUrlContinueToCurrent(r), http.StatusFound)
 		} else {
