@@ -196,6 +196,6 @@ func randomBackgroundImage() string {
 
 	// Intn() returns between 1 and n-1 so we'll adjust to between (1, n)
 	return fmt.Sprintf(
-		"https://s3.amazonaws.com/files.function61.com/id-backgrounds/%d.jpg",
+		"https://function61.com/files/id-backgrounds/%d.jpg",
 		1+rand.Intn(maxBackgroundNumber))
 }
