@@ -3,8 +3,8 @@ package idclient
 import (
 	"net/http"
 
-	"github.com/function61/gokit/httpauth"
 	"github.com/function61/gokit/sliceutil"
+	"github.com/function61/id/pkg/httpauth"
 )
 
 type Authorizer func(*http.Request, *httpauth.UserDetails) bool

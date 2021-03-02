@@ -8,13 +8,14 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/function61/gokit/httpauth"
 	"github.com/function61/gokit/httputils"
+	"github.com/function61/id/pkg/httpauth"
 	"github.com/gorilla/mux"
 )
 
 type GatewayApi struct {
 	client               *Client
+	audience             string
 	authenticator        httpauth.HttpRequestAuthenticator
 	authenticatorBuildMu sync.Mutex
 }
@@ -22,7 +23,7 @@ type GatewayApi struct {
 // This auth gateway is required because the identity server cannot set cookies on our behalf.
 // The auth gateway simply takes the auth token from URL param, sets cookie and redirects forward.
 
-func (c *Client) CreateAuthGateway(router *mux.Router) *GatewayApi {
+func (c *Client) CreateAuthGateway(router *mux.Router, audience string) *GatewayApi {
 	// we used to fetch the public key here, but that's not ideal. this CreateAuthGateway() is usually
 	// called on application startup to protect specified/all HTTP routes. if we were to error here,
 	// perhaps because network is down, it'd prevent starting the HTTP app.
@@ -34,7 +35,10 @@ func (c *Client) CreateAuthGateway(router *mux.Router) *GatewayApi {
 	// 2. (ID server becomes back online)
 	// 3. Req 2 needs authentication - now succeeds because we re-try fetching pubkey (b/c no cached entry)
 
-	g := &GatewayApi{client: c}
+	g := &GatewayApi{
+		client:   c,
+		audience: audience,
+	}
 
 	g.registerGatewayRoutes(router)
 
@@ -174,7 +178,7 @@ func (g *GatewayApi) getAuthenticator() (httpauth.HttpRequestAuthenticator, erro
 			return nil, fmt.Errorf("obtainPublicKey: %w", err)
 		}
 
-		authenticator, err := httpauth.NewEcJwtAuthenticator(publicKey)
+		authenticator, err := httpauth.NewEcJwtAuthenticator(publicKey, g.audience)
 		if err != nil {
 			return nil, fmt.Errorf("NewEcJwtAuthenticator: %w", err)
 		}
