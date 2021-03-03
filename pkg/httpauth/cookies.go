@@ -2,29 +2,11 @@ package httpauth
 
 import (
 	"net/http"
-
-	"github.com/function61/gokit/csrf"
 )
 
 const (
 	loginCookieName = "auth"
 )
-
-func ToCookiesWithCsrfProtection(tokenString string) []*http.Cookie {
-	authCookie := &http.Cookie{
-		Name:     loginCookieName,
-		Value:    tokenString,
-		Path:     "/",
-		HttpOnly: true,                 // = not visible to JavaScript, to protect from XSS
-		SameSite: http.SameSiteLaxMode, // CSRF protection (no strict b/c cookies+redirects don't work)
-		Secure:   true,                 // only submit over https
-	}
-
-	return []*http.Cookie{
-		authCookie,
-		csrf.CreateCookie(),
-	}
-}
 
 func ToCookie(tokenString string) *http.Cookie {
 	// https://stackoverflow.com/questions/42216700/how-can-i-redirect-after-oauth2-with-samesite-strict-and-still-get-my-cookies

@@ -28,8 +28,6 @@ type HttpRequestAuthenticator interface {
 	// authenticates a Request
 	Authenticate(req *http.Request) (*UserDetails, error)
 	AuthenticateJwtString(jwtString string) (*UserDetails, error)
-	// authenticates a Request that has cookies returned by ToCookiesWithCsrfProtection()
-	AuthenticateWithCsrfProtection(req *http.Request) (*UserDetails, error)
 }
 
 type Signer interface {
