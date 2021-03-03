@@ -2,12 +2,13 @@ package idclient
 
 import (
 	"context"
-	"errors"
-	"io/ioutil"
+	"crypto/ed25519"
+	"fmt"
 	"net/url"
 
 	"github.com/function61/gokit/ezhttp"
 	"github.com/function61/id/pkg/idtypes"
+	"gopkg.in/square/go-jose.v2"
 )
 
 const (
@@ -40,21 +41,24 @@ func (c *Client) logoutUrl() string {
 	return c.serverBaseurl + "/logout"
 }
 
-func (c *Client) obtainPublicKey(ctx context.Context) ([]byte, error) {
-	res, err := ezhttp.Get(ctx, c.serverBaseurl+"/signer.pub")
-	if err != nil {
+func (c *Client) obtainPublicKey(ctx context.Context) (ed25519.PublicKey, error) {
+	keySet := jose.JSONWebKeySet{}
+	if _, err := ezhttp.Get(
+		ctx,
+		c.serverBaseurl+"/.well-known/jwks.json",
+		ezhttp.RespondsJson(&keySet, true),
+	); err != nil {
 		return nil, err
 	}
-	defer res.Body.Close()
 
-	publicKey, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return nil, err
+	if len(keySet.Keys) == 0 {
+		return nil, fmt.Errorf("got %d key(s)", len(keySet.Keys))
 	}
 
-	if len(publicKey) == 0 {
-		return nil, errors.New("empty public key")
-	}
+	// TODO: take into account multiple keys (key rollover)
+	firstKey := keySet.Keys[0]
 
-	return publicKey, nil
+	keyInterface := firstKey.Public().Key
+
+	return keyInterface.(ed25519.PublicKey), nil
 }
