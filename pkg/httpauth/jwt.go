@@ -96,7 +96,7 @@ func (j *jwtAuthenticator) Authenticate(r *http.Request) (*UserDetails, error) {
 }
 
 func (j *jwtAuthenticator) AuthenticateJwtString(jwtString string) (*UserDetails, error) {
-	claims, err := j.getValidatedClaims(jwtString)
+	claims, err := j.getValidatedClaimsCached(jwtString)
 	if err != nil {
 		return nil, fmt.Errorf("JWT authentication: %w", err)
 	}
@@ -112,12 +112,25 @@ func (j *jwtAuthenticator) AuthenticateWithCsrfProtection(r *http.Request) (*Use
 	return j.Authenticate(r)
 }
 
-func (j *jwtAuthenticator) getValidatedClaims(jwtString string) (*jwt.StandardClaims, error) {
+// wrap caching in its own "layer" so getValidatedClaims() is easier to audit
+func (j *jwtAuthenticator) getValidatedClaimsCached(jwtString string) (*jwt.StandardClaims, error) {
 	cachedClaims, isCached := j.authCache.Get(jwtString)
 	if isCached {
 		return cachedClaims.(*jwt.StandardClaims), nil
 	}
 
+	validatedClaims, err := j.getValidatedClaims(jwtString)
+	// cache only if 1) claims valid 2) we have an expiration 3) expiration is in future
+	if err == nil && validatedClaims.ExpiresAt != 0 {
+		if untilExpiration := time.Until(time.Unix(validatedClaims.ExpiresAt, 0)); untilExpiration > 0 {
+			j.authCache.Set(jwtString, validatedClaims, untilExpiration)
+		}
+	}
+
+	return validatedClaims, err
+}
+
+func (j *jwtAuthenticator) getValidatedClaims(jwtString string) (*jwt.StandardClaims, error) {
 	token, err := jwt.ParseWithClaims(jwtString, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodECDSA); !ok {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
@@ -131,15 +144,6 @@ func (j *jwtAuthenticator) getValidatedClaims(jwtString string) (*jwt.StandardCl
 	}
 
 	claims := token.Claims.(*jwt.StandardClaims)
-
-	// cache the claims until expiration, if we have expiration and is in the future
-	if claims.ExpiresAt != 0 {
-		untilExpiration := time.Until(time.Unix(claims.ExpiresAt, 0))
-
-		if untilExpiration > 0 {
-			j.authCache.Set(jwtString, claims, untilExpiration)
-		}
-	}
 
 	if j.audience != claims.Audience {
 		return nil, fmt.Errorf("invalid audience: %s; expecting %s", claims.Audience, j.audience)
