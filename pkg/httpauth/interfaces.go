@@ -1,8 +1,14 @@
 package httpauth
 
 import (
+	"errors"
 	"net/http"
 	"time"
+)
+
+var (
+	ErrSessionExpired = errors.New("session expired")
+	ErrNoAuthToken    = errors.New("auth: either specify '" + loginCookieName + "' cookie or 'Authorization' header")
 )
 
 type RequestContext struct {

@@ -89,7 +89,7 @@ func (j *jwtAuthenticator) Authenticate(r *http.Request) (*UserDetails, error) {
 	}()
 
 	if jwtString == "" {
-		return nil, fmt.Errorf("auth: either specify '%s' cookie or 'Authorization' header", loginCookieName)
+		return nil, ErrNoAuthToken
 	}
 
 	return j.AuthenticateJwtString(jwtString)
@@ -98,6 +98,11 @@ func (j *jwtAuthenticator) Authenticate(r *http.Request) (*UserDetails, error) {
 func (j *jwtAuthenticator) AuthenticateJwtString(jwtString string) (*UserDetails, error) {
 	claims, err := j.getValidatedClaimsCached(jwtString)
 	if err != nil {
+		// translate expired error
+		if errValidation, is := err.(jwt.ValidationError); is && (errValidation.Errors&jwt.ValidationErrorExpired) != 0 {
+			return nil, ErrSessionExpired
+		}
+
 		return nil, fmt.Errorf("JWT authentication: %w", err)
 	}
 

@@ -75,18 +75,24 @@ func (g *GatewayApi) AuthenticateAndAuthorize(
 	// 1) authentication
 	authentication, err := authenticator.Authenticate(r)
 	if err != nil {
-		// don't just blindly redirect all requests like .js, .jpg, .css etc.
-		requestingHtml := strings.Contains(r.Header.Get("Accept"), "text/html")
+		switch {
+		case err == httpauth.ErrNoAuthToken, err == httpauth.ErrSessionExpired:
+			// don't just blindly redirect all requests like .js, .jpg, .css etc.
+			requestingHtml := strings.Contains(r.Header.Get("Accept"), "text/html")
 
-		httputils.NoCacheHeaders(w)
+			httputils.NoCacheHeaders(w)
 
-		if requestingHtml {
-			// return via our gateway that sets the auth token
-			http.Redirect(w, r, g.authUrlContinueToCurrent(r), http.StatusFound)
-		} else {
-			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			if requestingHtml {
+				// return via our gateway that sets the auth token
+				http.Redirect(w, r, g.authUrlContinueToCurrent(r), http.StatusFound)
+			} else {
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+			}
+			return nil
+		default: // some other error => display instead of redirect
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return nil
 		}
-		return nil
 	}
 
 	// 2) authorization
