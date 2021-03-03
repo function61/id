@@ -157,7 +157,7 @@ func (g *GatewayApi) registerGatewayRoutes(router *mux.Router) *GatewayApi {
 		//
 		// the attacker still can set a valid JWT, so in effect can change victim's user.
 		if _, err := authenticator.AuthenticateJwtString(jwt); err != nil {
-			http.Error(w, "missing query param: jwt", http.StatusBadRequest)
+			http.Error(w, "AuthenticateJwtString: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
