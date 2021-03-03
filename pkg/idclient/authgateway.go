@@ -131,6 +131,9 @@ func (g *GatewayApi) registerGatewayRoutes(router *mux.Router) *GatewayApi {
 	})
 
 	router.HandleFunc("/_auth/redirect", func(w http.ResponseWriter, r *http.Request) {
+		// better set no-cache headers here, because URL already contains sensitive info
+		httputils.NoCacheHeaders(w)
+
 		next, err := validateRelativeRedirect(r.URL.Query().Get("next"))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -159,8 +162,6 @@ func (g *GatewayApi) registerGatewayRoutes(router *mux.Router) *GatewayApi {
 		}
 
 		http.SetCookie(w, httpauth.ToCookie(jwt))
-
-		httputils.NoCacheHeaders(w)
 
 		http.Redirect(w, r, next, http.StatusFound)
 	})
