@@ -13,6 +13,10 @@
 				"build": ["bin/build.sh"],
 				"dev": ["bash"]
 			},
+			"dev_shell_commands": [
+				{ "command": "source dev.env", "important": true },
+				{ "command": "rel/id_linux-amd64 serve", "important": true }
+			],
 			"dev_http_ingress": "80"
 		}
 	],
