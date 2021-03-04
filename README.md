@@ -1,4 +1,7 @@
-Our Single-Sign-On ("SSO") server and client library.
+Our Single-Sign-On ("SSO") server and client library for multi-tenant architectures. Usable both as:
+
+- remote SSO server
+- embeddable inside a standalone application
 
 The server works also on AWS Lambda.
 
@@ -12,6 +15,14 @@ Architecture
 ------------
 
 ![](docs/architecture.png)
+
+Essentially, your consumer services configure one base URL (like `https://function61.com/id`) as
+trusted. Based on that URL, the consumer library's gateway code knows where to send users for logging in,
+and that the trusted public keys are downloadable from https://function61.com/id/.well-known/jwks.json
+
+Each of these public keys can sign JWTs that the consumer code accepts.
+
+Our ID server implements [JSON Web Key Sets](https://auth0.com/docs/tokens/json-web-tokens/json-web-key-sets).
 
 
 Status
@@ -31,19 +42,19 @@ Setting up
 
 ```console
 $ ./id genkey
------BEGIN PRIVATE KEY-----
-...
-...
------END PRIVATE KEY-----
+qBQWxnKj7DUUQsnojWdwCui96Ur9dpU5F2wq8orpt0NBlhBCbZg05zXOpwOtxkwd77dkKcHzte1837xfLALKpg
 ```
+
+This is an [Ed25519](https://en.wikipedia.org/wiki/EdDSA#Ed25519) private key. Guard it well.
+Only your SSO server should be able to access it.
+
 
 ### Start ID server
 
 Before starting the server, you need to pass the signing key as ENV variable
 `SIGNING_PRIVATE_KEY`.
 
-You need to replace newlines with literal `\n`, i.e. the key from generation example
-becomes `-----BEGIN PRIVATE KEY-----\n...\n...\n-----END PRIVATE KEY-----`.
+Tip: `$ ./id genkey > dev.env`, then add `export SIGNING_PRIVATE_KEY=` in front.
 
 
 CLI
@@ -72,7 +83,13 @@ Security
 
 User's passwords are stored using PBKDF2, and never leave the SSO service - not even the hashes.
 
+Project lead is:
 
+- aware of and understands [OWASP Top Ten](https://owasp.org/www-project-top-ten/), particularly:
+	* CSRF
+	* Unvalidated redirects](https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html).
+- aware of common JWT pitfalls
+- a [security-minded person](https://joonas.fi/tags/infosec/)
 
 
 Roadmap
