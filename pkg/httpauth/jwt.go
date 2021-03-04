@@ -1,5 +1,7 @@
 package httpauth
 
+// JWT using Ed25519
+
 import (
 	"crypto/ed25519"
 	"net/http"
@@ -14,7 +16,7 @@ type jwtSigner struct {
 	privKey ed25519.PrivateKey
 }
 
-func NewEcJwtSigner(privKey ed25519.PrivateKey) (Signer, error) {
+func NewJwtSigner(privKey ed25519.PrivateKey) (Signer, error) {
 	return &jwtSigner{
 		privKey: privKey,
 	}, nil
@@ -45,7 +47,7 @@ type jwtAuthenticator struct {
 	now func() time.Time // for testing
 }
 
-func NewEcJwtAuthenticator(publicKey ed25519.PublicKey, audience string) (HttpRequestAuthenticator, error) {
+func NewJwtAuthenticator(publicKey ed25519.PublicKey, audience string) (HttpRequestAuthenticator, error) {
 	return &jwtAuthenticator{
 		publicKey: publicKey,
 

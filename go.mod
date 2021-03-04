@@ -10,5 +10,6 @@ require (
 	github.com/kataras/jwt v0.1.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/spf13/cobra v1.0.0
+	golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2
 	gopkg.in/square/go-jose.v2 v2.5.1
 )

@@ -180,14 +180,14 @@ func (g *GatewayApi) getAuthenticator() (httpauth.HttpRequestAuthenticator, erro
 	defer g.authenticatorBuildMu.Unlock()
 
 	if g.authenticator == nil {
-		publicKey, err := g.client.obtainPublicKey(context.Background())
+		publicKey, err := g.client.ObtainPublicKey(context.Background())
 		if err != nil {
-			return nil, fmt.Errorf("obtainPublicKey: %w", err)
+			return nil, fmt.Errorf("ObtainPublicKey: %w", err)
 		}
 
-		authenticator, err := httpauth.NewEcJwtAuthenticator(publicKey, g.audience)
+		authenticator, err := httpauth.NewJwtAuthenticator(publicKey, g.audience)
 		if err != nil {
-			return nil, fmt.Errorf("NewEcJwtAuthenticator: %w", err)
+			return nil, fmt.Errorf("NewJwtAuthenticator: %w", err)
 		}
 
 		g.authenticator = authenticator
