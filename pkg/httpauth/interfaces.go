@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	ErrSessionExpired = errors.New("session expired")
-	ErrNoAuthToken    = errors.New("auth: either specify '" + loginCookieName + "' cookie or 'Authorization' header")
+	ErrTokenExpired = errors.New("auth: session expired")
+	ErrNoAuthToken  = errors.New("auth: either specify '" + loginCookieName + "' cookie or 'Authorization' header")
 )
 
 type RequestContext struct {
@@ -25,7 +25,7 @@ func NewUserDetails(id string, authTokenJwt string) *UserDetails {
 }
 
 type HttpRequestAuthenticator interface {
-	// authenticates a Request
+	// authenticates a Request. error is ErrNoAuthToken if no auth details and ErrSessionExpired if auth token expired
 	Authenticate(req *http.Request) (*UserDetails, error)
 	AuthenticateJwtString(jwtString string) (*UserDetails, error)
 }

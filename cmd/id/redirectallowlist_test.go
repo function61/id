@@ -7,9 +7,9 @@ import (
 )
 
 func TestHostMatchesAllowList(t *testing.T) {
-	allowList := []string{
-		"*.prod.example.net",
-		"foobar.com",
+	allowList := map[string]string{
+		"*.prod.example.net": "t-1/site",
+		"foobar.com":         "t-2/site",
 	}
 
 	for _, tc := range []struct {
@@ -52,7 +52,8 @@ func TestHostMatchesAllowList(t *testing.T) {
 		tc := tc // pin
 
 		t.Run(tc.host, func(t *testing.T) {
-			assert.Assert(t, hostMatchesAllowList(tc.host, allowList) == tc.matches)
+			match, _ := hostMatchesAllowList(tc.host, allowList)
+			assert.Assert(t, match == tc.matches)
 		})
 	}
 }

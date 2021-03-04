@@ -4,15 +4,15 @@ import (
 	"strings"
 )
 
-func hostMatchesAllowList(host string, allowList []string) bool {
-	for _, allow := range allowList {
+func hostMatchesAllowList(host string, allowList map[string]string) (bool, string) {
+	for allow, audience := range allowList {
 		switch {
 		case host == allow:
-			return true
+			return true, audience
 		case strings.HasPrefix(allow, "*") && strings.HasSuffix(host, allow[1:]): // *.example.com
-			return true
+			return true, audience
 		}
 	}
 
-	return false
+	return false, ""
 }

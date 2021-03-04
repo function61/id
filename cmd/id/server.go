@@ -1,7 +1,8 @@
 package main
 
 import (
-	"crypto/x509"
+	"bytes"
+	"crypto/ed25519"
 	"embed"
 	"errors"
 	"fmt"
@@ -10,16 +11,15 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 
-	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/function61/gokit/cryptoutil"
 	"github.com/function61/gokit/envvar"
-	"github.com/function61/gokit/httpauth"
 	"github.com/function61/gokit/httputils"
 	"github.com/function61/gokit/jsonfile"
+	"github.com/function61/id/pkg/httpauth"
 	"github.com/gorilla/mux"
+	legacyed25519 "golang.org/x/crypto/ed25519"
+	"gopkg.in/square/go-jose.v2"
 )
 
 //go:embed templates
@@ -37,7 +37,12 @@ func newHttpHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	authenticator, err := httpauth.NewEcJwtAuthenticator(signerPublicKey)
+	signerPubKeySetJson, err := makeSignerKeySet(signerPublicKey)
+	if err != nil {
+		return nil, fmt.Errorf("makeSignerKeySet: %w", err)
+	}
+
+	authenticator, err := httpauth.NewJwtAuthenticator(signerPublicKey, "")
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +50,7 @@ func newHttpHandler() (http.Handler, error) {
 	userRegistry := newUserRegistry()
 
 	router.HandleFunc("/id", func(w http.ResponseWriter, r *http.Request) {
-		nextValidated, err := getValidatedNext(r, redirectAllowList)
+		nextValidated, _, err := getValidatedNext(r, redirectAllowList)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -67,7 +72,7 @@ func newHttpHandler() (http.Handler, error) {
 	}).Methods(http.MethodGet)
 
 	router.HandleFunc("/id", func(w http.ResponseWriter, r *http.Request) {
-		nextValidated, err := getValidatedNext(r, redirectAllowList)
+		nextValidated, audience, err := getValidatedNext(r, redirectAllowList)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -98,7 +103,7 @@ func newHttpHandler() (http.Handler, error) {
 
 		userDetails := httpauth.NewUserDetails(user.Id, "")
 
-		jwt := signer.Sign(*userDetails, time.Now())
+		jwt := signer.Sign(*userDetails, audience, time.Now())
 
 		log.Printf("login ok for %s", email)
 
@@ -135,67 +140,55 @@ func newHttpHandler() (http.Handler, error) {
 		fmt.Fprintln(w, "You have been logged out.")
 	})
 
-	router.HandleFunc("/id/signer.pub", func(w http.ResponseWriter, r *http.Request) {
-		// https://stackoverflow.com/a/19517513
-		w.Header().Set("Content-Type", "application/x-pem-file")
-
-		fmt.Fprintln(w, string(signerPublicKey))
+	router.HandleFunc("/id/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
+		// https://tools.ietf.org/html/rfc7517
+		w.Header().Set("Content-Type", "application/jwk-set+json")
+		_, _ = w.Write(signerPubKeySetJson)
 	})
 
 	return router, nil
 }
 
-func getValidatedNext(r *http.Request, redirectAllowList []string) (*url.URL, error) {
+func getValidatedNext(r *http.Request, redirectAllowList map[string]string) (*url.URL, string, error) {
 	next := r.URL.Query().Get("next")
 	if next == "" {
-		return nil, errors.New("'next' not set")
+		return nil, "", errors.New("'next' not set")
 	}
 
 	nextUrl, err := url.Parse(next)
 	if err != nil {
-		return nil, fmt.Errorf("'next' not valid URL: %v", err)
+		return nil, "", fmt.Errorf("'next' not valid URL: %v", err)
 	}
 
-	if !hostMatchesAllowList(nextUrl.Host, redirectAllowList) {
-		return nil, fmt.Errorf("'next' hostname (%s) not in allow list", nextUrl.Host)
+	matches, audience := hostMatchesAllowList(nextUrl.Host, redirectAllowList)
+	if !matches {
+		return nil, "", fmt.Errorf("'next' hostname (%s) not in allow list", nextUrl.Host)
 	}
 
-	return nextUrl, nil
+	return nextUrl, audience, nil
 }
 
-func loadSignerAndPublicKey() (httpauth.Signer, []byte, error) {
+func loadSignerAndPublicKey() (httpauth.Signer, ed25519.PublicKey, error) {
 	signingKey, err := loadSigningPrivateKey()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	signer, err := httpauth.NewEcJwtSigner(signingKey)
+	signer, err := httpauth.NewJwtSigner(signingKey)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// signer internally did this, but we need to do this again to get access to the pubkey
-	privKey, err := jwt.ParseECPrivateKeyFromPEM(signingKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	pubKeyMarshaled, err := x509.MarshalPKIXPublicKey(&privKey.PublicKey)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return signer, cryptoutil.MarshalPemBytes(pubKeyMarshaled, cryptoutil.PemTypePublicKey), nil
+	return signer, signingKey.Public().(ed25519.PublicKey), nil
 }
 
-func loadSigningPrivateKey() ([]byte, error) {
+func loadSigningPrivateKey() (ed25519.PrivateKey, error) {
 	pk, err := envvar.Required("SIGNING_PRIVATE_KEY")
 	if err != nil {
 		return nil, err
 	}
 
-	// PEM (= base64) isn't allowed to contain \ chars so this is OK
-	return []byte(strings.ReplaceAll(pk, `\n`, "\n")), nil
+	return unmarshalPrivateKey(pk)
 }
 
 func randomBackgroundImage() string {
@@ -205,4 +198,19 @@ func randomBackgroundImage() string {
 	return fmt.Sprintf(
 		"https://function61.com/files/id-backgrounds/%d.jpg",
 		1+rand.Intn(maxBackgroundNumber))
+}
+
+func makeSignerKeySet(signerPublicKey ed25519.PublicKey) ([]byte, error) {
+	jwk := jose.JSONWebKey{
+		Key: legacyed25519.PublicKey(signerPublicKey), // go-jose uses outdated module location
+	}
+
+	keySetJson := bytes.Buffer{}
+	if err := jsonfile.Marshal(&keySetJson, jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{jwk},
+	}); err != nil {
+		return nil, err
+	}
+
+	return keySetJson.Bytes(), nil
 }

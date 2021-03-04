@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,7 +12,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/function61/gokit/aws/lambdautils"
 	"github.com/function61/gokit/dynversion"
-	"github.com/function61/gokit/httpauth"
 	"github.com/function61/gokit/httputils"
 	"github.com/function61/gokit/logex"
 	"github.com/function61/gokit/osutil"
@@ -59,10 +60,15 @@ func main() {
 		Short: "Generate signing key for a new SSO server",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			privateKey, _, err := httpauth.GenerateKey()
-			osutil.ExitIfError(err)
+			osutil.ExitIfError(func() error {
+				_, ed25519Privkey, err := ed25519.GenerateKey(rand.Reader)
+				if err != nil {
+					return err
+				}
 
-			fmt.Fprintln(os.Stdout, string(privateKey))
+				_, err = fmt.Fprintln(os.Stdout, marshalPrivateKey(ed25519Privkey))
+				return err
+			}())
 		},
 	})
 

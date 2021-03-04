@@ -91,7 +91,7 @@ func (j *jwtAuthenticator) AuthenticateJwtString(jwtString string) (*UserDetails
 	claims, err := j.getValidatedClaimsCached(jwtString)
 	if err != nil {
 		if err == jwt.ErrExpired { // translate expired error
-			return nil, ErrSessionExpired
+			return nil, ErrTokenExpired
 		} else {
 			// no need to wrap b/c errors seem to be prefixed with "jwt: "
 			return nil, err

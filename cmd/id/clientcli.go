@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	"io"
 	"os"
 
@@ -22,20 +24,43 @@ func clientEntry() *cobra.Command {
 		Short: "Fetch user's details given an auth token",
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
-			serverUrl := args[0]
-			if serverUrl == "" {
-				serverUrl = idclient.Function61
-			}
-
 			osutil.ExitIfError(userGet(
 				osutil.CancelOnInterruptOrTerminate(nil),
 				args[1],
-				serverUrl,
+				serverUrlOrDefaultToFunction61(args[0]),
 				os.Stdout))
 		},
 	})
 
+	cmd.AddCommand(&cobra.Command{
+		Use:   "pubkey [serverUrl]",
+		Short: "Fetch public key for the SSO server",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			osutil.ExitIfError(func() error {
+				client := idclient.New(serverUrlOrDefaultToFunction61(args[0]))
+
+				pubKey, err := client.ObtainPublicKey(osutil.CancelOnInterruptOrTerminate(nil))
+				if err != nil {
+					return err
+				}
+
+				fmt.Println(base64.RawURLEncoding.EncodeToString(pubKey))
+
+				return nil
+			}())
+		},
+	})
+
 	return cmd
+}
+
+func serverUrlOrDefaultToFunction61(serverUrl string) string {
+	if serverUrl != "" {
+		return serverUrl
+	} else {
+		return idclient.Function61
+	}
 }
 
 func userGet(ctx context.Context, token string, serverUrl string, output io.Writer) error {

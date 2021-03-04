@@ -76,7 +76,7 @@ func (g *GatewayApi) AuthenticateAndAuthorize(
 	authentication, err := authenticator.Authenticate(r)
 	if err != nil {
 		switch {
-		case err == httpauth.ErrNoAuthToken, err == httpauth.ErrSessionExpired:
+		case err == httpauth.ErrNoAuthToken, err == httpauth.ErrTokenExpired:
 			// don't just blindly redirect all requests like .js, .jpg, .css etc.
 			requestingHtml := strings.Contains(r.Header.Get("Accept"), "text/html")
 
