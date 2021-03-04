@@ -2,7 +2,6 @@ package httpauth
 
 import (
 	"crypto/ed25519"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -39,9 +38,11 @@ type jwtAuthenticator struct {
 
 	audience string
 
-	// use caching for JWT validation, since ECDSA is pretty expensive, at least
+	// use caching for JWT validation, since these crypto opts are somewhat expensive, at least
 	// when running on a Raspberry Pi Zero W each request takes seconds
 	authCache *cache.Cache
+
+	now func() time.Time // for testing
 }
 
 func NewEcJwtAuthenticator(publicKey ed25519.PublicKey, audience string) (HttpRequestAuthenticator, error) {
@@ -52,6 +53,8 @@ func NewEcJwtAuthenticator(publicKey ed25519.PublicKey, audience string) (HttpRe
 
 		// defaultExpiration doesn't matter, because we'll always push to cache with explicit TTLs
 		authCache: cache.New(5*time.Minute, 10*time.Minute),
+
+		now: time.Now,
 	}, nil
 }
 
@@ -88,7 +91,8 @@ func (j *jwtAuthenticator) AuthenticateJwtString(jwtString string) (*UserDetails
 		if err == jwt.ErrExpired { // translate expired error
 			return nil, ErrSessionExpired
 		} else {
-			return nil, fmt.Errorf("JWT authentication: %w", err)
+			// no need to wrap b/c errors seem to be prefixed with "jwt: "
+			return nil, err
 		}
 	} else {
 		return NewUserDetails(claims.Subject, jwtString), nil
@@ -105,12 +109,16 @@ func (j *jwtAuthenticator) getValidatedClaimsCached(jwtString string) (*jwt.Clai
 	validClaims, err := j.getValidatedClaims(jwtString)
 	// cache only if 1) claims valid 2) we have an expiration 3) expiration is in future
 	if err == nil && validClaims.Expiry != 0 {
-		if untilExpiration := time.Until(validClaims.ExpiresAt()); untilExpiration > 0*time.Second {
+		if untilExpiration := j.until(validClaims.ExpiresAt()); untilExpiration > 0*time.Second {
 			j.authCache.Set(jwtString, validClaims, untilExpiration)
 		}
 	}
 
 	return validClaims, err
+}
+
+func (j *jwtAuthenticator) until(t time.Time) time.Duration {
+	return t.Sub(j.now())
 }
 
 func (j *jwtAuthenticator) getValidatedClaims(jwtString string) (*jwt.Claims, error) {
