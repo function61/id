@@ -10,7 +10,6 @@ import (
 
 	"github.com/function61/gokit/net/http/httputils"
 	"github.com/function61/id/pkg/httpauth"
-	"github.com/gorilla/mux"
 )
 
 type GatewayApi struct {
@@ -23,7 +22,7 @@ type GatewayApi struct {
 // This auth gateway is required because the identity server cannot set cookies on our behalf.
 // The auth gateway simply takes the auth token from URL param, sets cookie and redirects forward.
 
-func (c *Client) CreateAuthGateway(router *mux.Router, audience string) *GatewayApi {
+func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string) *GatewayApi {
 	// we used to fetch the public key here, but that's not ideal. this CreateAuthGateway() is usually
 	// called on application startup to protect specified/all HTTP routes. if we were to error here,
 	// perhaps because network is down, it'd prevent starting the HTTP app.
@@ -123,7 +122,7 @@ func (g *GatewayApi) loginUrlContinueToGateway(continueAfterGateway string, r *h
 	return g.client.loginUrl(gateway)
 }
 
-func (g *GatewayApi) registerGatewayRoutes(router *mux.Router) *GatewayApi {
+func (g *GatewayApi) registerGatewayRoutes(router *http.ServeMux) *GatewayApi {
 	// logs the user out from this website, but also the identity server
 	router.HandleFunc("/_auth/logout", func(w http.ResponseWriter, r *http.Request) {
 		httputils.NoCacheHeaders(w)

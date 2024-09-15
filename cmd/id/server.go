@@ -17,7 +17,6 @@ import (
 	"github.com/function61/gokit/net/http/httputils"
 	"github.com/function61/gokit/os/osutil"
 	"github.com/function61/id/pkg/httpauth"
-	"github.com/gorilla/mux"
 	"gopkg.in/square/go-jose.v2"
 )
 
@@ -27,7 +26,7 @@ var templateFiles embed.FS
 var templates, _ = template.ParseFS(templateFiles, "templates/*.html")
 
 func newHttpHandler() (http.Handler, error) {
-	router := mux.NewRouter()
+	router := http.NewServeMux()
 
 	signer, signerPublicKey, err := loadSignerAndPublicKey()
 	if err != nil {
@@ -46,7 +45,7 @@ func newHttpHandler() (http.Handler, error) {
 
 	userRegistry := newUserRegistry()
 
-	router.HandleFunc("/id", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /id", func(w http.ResponseWriter, r *http.Request) {
 		nextValidated, _, err := getValidatedNext(r, redirectAllowList)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -66,9 +65,9 @@ func newHttpHandler() (http.Handler, error) {
 		}); err != nil {
 			panic(err)
 		}
-	}).Methods(http.MethodGet)
+	})
 
-	router.HandleFunc("/id", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("POST /id", func(w http.ResponseWriter, r *http.Request) {
 		nextValidated, audience, err := getValidatedNext(r, redirectAllowList)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -110,9 +109,9 @@ func newHttpHandler() (http.Handler, error) {
 
 		httputils.NoCacheHeaders(w)
 		http.Redirect(w, r, nextValidated.String(), http.StatusFound)
-	}).Methods(http.MethodPost)
+	})
 
-	router.HandleFunc("/id/profile", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /id/profile", func(w http.ResponseWriter, r *http.Request) {
 		auth, err := authenticator.Authenticate(r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusForbidden)
@@ -129,7 +128,7 @@ func newHttpHandler() (http.Handler, error) {
 		_ = jsonfile.Marshal(w, &user)
 	})
 
-	router.HandleFunc("/id/logout", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /id/logout", func(w http.ResponseWriter, r *http.Request) {
 		httputils.NoCacheHeaders(w)
 
 		http.SetCookie(w, httpauth.DeleteLoginCookie())
@@ -137,7 +136,7 @@ func newHttpHandler() (http.Handler, error) {
 		fmt.Fprintln(w, "You have been logged out.")
 	})
 
-	router.HandleFunc("/id/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc("GET /id/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
 		// https://tools.ietf.org/html/rfc7517
 		w.Header().Set("Content-Type", "application/jwk-set+json")
 		_, _ = w.Write(signerPubKeySetJson)

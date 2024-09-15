@@ -5,7 +5,6 @@ go 1.22
 require (
 	github.com/aws/aws-lambda-go v1.47.0
 	github.com/function61/gokit v0.0.0-20240419102346-a5f721139a62
-	github.com/gorilla/mux v1.7.4
 	github.com/kataras/jwt v0.1.2
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/spf13/cobra v1.6.1
