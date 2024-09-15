@@ -6,11 +6,11 @@
 	"builders": [
 		{
 			"name": "default",
-			"uses": "docker://fn61/buildkit-golang:20210208_0951_8496e47f",
+			"uses": "docker://fn61/buildkit-golang:20240913_1923_331687a0",
 			"mount_destination": "/workspace",
 			"workdir": "/workspace",
 			"commands": {
-				"build": ["bin/build.sh"],
+				"build": ["build-go-project.sh", "--directory=cmd/id/", "--binary-basename=id", "--aws-lambda-zip"],
 				"dev": ["bash"]
 			},
 			"dev_shell_commands": [
