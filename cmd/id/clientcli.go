@@ -7,8 +7,10 @@ import (
 	"io"
 	"os"
 
+	"github.com/function61/gokit/cryptorandombytes"
 	"github.com/function61/gokit/jsonfile"
 	"github.com/function61/gokit/osutil"
+	"github.com/function61/gokit/storedpassword"
 	"github.com/function61/id/pkg/idclient"
 	"github.com/spf13/cobra"
 )
@@ -29,6 +31,26 @@ func clientEntry() *cobra.Command {
 				args[1],
 				serverUrlOrDefaultToFunction61(args[0]),
 				os.Stdout))
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "user-generate [password]",
+		Short: "Generate user ID & password hash",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			osutil.ExitIfError(func() error {
+				uid := cryptorandombytes.Base64UrlWithoutLeadingDash(8)
+				pwdHash, err := storedpassword.Store(args[0], storedpassword.CurrentBestDerivationStrategy)
+				if err != nil {
+					return err
+				}
+
+				fmt.Printf("uid=%s\n", uid)
+				fmt.Printf("pwd=%s\n", pwdHash)
+
+				return nil
+			}())
 		},
 	})
 
