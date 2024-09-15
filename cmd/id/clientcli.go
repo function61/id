@@ -7,10 +7,10 @@ import (
 	"io"
 	"os"
 
-	"github.com/function61/gokit/cryptorandombytes"
-	"github.com/function61/gokit/jsonfile"
-	"github.com/function61/gokit/osutil"
-	"github.com/function61/gokit/storedpassword"
+	"github.com/function61/gokit/crypto/cryptoutil"
+	"github.com/function61/gokit/crypto/storedpassword"
+	"github.com/function61/gokit/encoding/jsonfile"
+	"github.com/function61/gokit/os/osutil"
 	"github.com/function61/id/pkg/idclient"
 	"github.com/spf13/cobra"
 )
@@ -40,7 +40,7 @@ func clientEntry() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			osutil.ExitIfError(func() error {
-				uid := cryptorandombytes.Base64UrlWithoutLeadingDash(8)
+				uid := cryptoutil.RandBase64UrlWithoutLeadingDash(8)
 				pwdHash, err := storedpassword.Store(args[0], storedpassword.CurrentBestDerivationStrategy)
 				if err != nil {
 					return err
@@ -93,5 +93,5 @@ func userGet(ctx context.Context, token string, serverUrl string, output io.Writ
 		return err
 	}
 
-	return jsonfile.Marshal(os.Stdout, user)
+	return jsonfile.Marshal(output, user)
 }

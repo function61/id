@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/function61/gokit/storedpassword"
+	"github.com/function61/gokit/crypto/storedpassword"
 	"github.com/function61/id/pkg/idtypes"
 )
 

@@ -10,12 +10,11 @@ import (
 	"os"
 
 	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/function61/gokit/aws/lambdautils"
-	"github.com/function61/gokit/dynversion"
-	"github.com/function61/gokit/httputils"
-	"github.com/function61/gokit/logex"
-	"github.com/function61/gokit/osutil"
-	"github.com/function61/gokit/taskrunner"
+	"github.com/function61/gokit/app/aws/lambdautils"
+	"github.com/function61/gokit/app/dynversion"
+	"github.com/function61/gokit/log/logex"
+	"github.com/function61/gokit/net/http/httputils"
+	"github.com/function61/gokit/os/osutil"
 	"github.com/spf13/cobra"
 )
 
@@ -50,8 +49,7 @@ func main() {
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			osutil.ExitIfError(runStandaloneRestApi(
-				osutil.CancelOnInterruptOrTerminate(rootLogger),
-				rootLogger))
+				osutil.CancelOnInterruptOrTerminate(rootLogger)))
 		},
 	})
 
@@ -78,7 +76,7 @@ func main() {
 }
 
 // for standalone use
-func runStandaloneRestApi(ctx context.Context, logger *log.Logger) error {
+func runStandaloneRestApi(ctx context.Context) error {
 	handler, err := newHttpHandler()
 	if err != nil {
 		return err
@@ -87,17 +85,11 @@ func runStandaloneRestApi(ctx context.Context, logger *log.Logger) error {
 	srv := &http.Server{
 		Addr:    ":80",
 		Handler: handler,
+
+		ReadHeaderTimeout: httputils.DefaultReadHeaderTimeout,
 	}
 
-	tasks := taskrunner.New(ctx, logger)
-
-	tasks.Start("listener "+srv.Addr, func(_ context.Context) error {
-		return httputils.RemoveGracefulServerClosedError(srv.ListenAndServe())
-	})
-
-	tasks.Start("listenershutdowner", httputils.ServerShutdownTask(srv))
-
-	return tasks.Wait()
+	return httputils.CancelableServer(ctx, srv, srv.ListenAndServe)
 }
 
 // TODO: move to lambdautils?

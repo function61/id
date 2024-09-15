@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/function61/gokit/assert"
+	"github.com/function61/gokit/testing/assert"
 	"github.com/kataras/jwt"
 	"github.com/patrickmn/go-cache"
 )
@@ -20,9 +20,9 @@ func TestSignAndAuthenticate(t *testing.T) {
 
 	cookie := ToCookie(token)
 
-	assert.EqualString(t, cookie.Name, "auth")
-	assert.EqualString(t, cookie.Value, token)
-	assert.Assert(t, cookie.HttpOnly)
+	assert.Equal(t, cookie.Name, "auth")
+	assert.Equal(t, cookie.Value, token)
+	assert.Equal(t, cookie.HttpOnly, true)
 
 	authenticator, _ := NewJwtAuthenticator(testPublicKey(), "")
 
@@ -37,7 +37,7 @@ func TestSignAndAuthenticate(t *testing.T) {
 		return err.Error()
 	}
 
-	assert.EqualString(t,
+	assert.Equal(t,
 		authenticateReq(makeReq(nil)),
 		"auth: either specify 'auth' cookie or 'Authorization' header")
 
@@ -46,7 +46,7 @@ func TestSignAndAuthenticate(t *testing.T) {
 	reqWithBearerToken := makeReq(nil)
 	reqWithBearerToken.Header.Set("Authorization", "Bearer "+cookie.Value)
 
-	assert.EqualString(t, authenticateReq(reqWithBearerToken), "userid<123> tok<eyJhbGci..>")
+	assert.Equal(t, authenticateReq(reqWithBearerToken), "userid<123> tok<eyJhbGci..>")
 }
 
 func TestSignAndAuthenticateMismatchingPublicKey(t *testing.T) {
@@ -61,7 +61,7 @@ func TestSignAndAuthenticateMismatchingPublicKey(t *testing.T) {
 
 	_, err = authenticator.Authenticate(makeReq(ToCookie(token)))
 
-	assert.EqualString(t, err.Error(), "jwt: invalid token signature")
+	assert.Equal(t, err.Error(), "jwt: invalid token signature")
 }
 
 func TestTokenExpiry(t *testing.T) {
@@ -80,9 +80,9 @@ func TestTokenExpiry(t *testing.T) {
 
 		if should {
 			assert.Ok(t, err)
-			assert.EqualString(t, userDetails.Id, "123")
+			assert.Equal(t, userDetails.Id, "123")
 		} else {
-			assert.Assert(t, err == ErrSessionExpired)
+			assert.Equal(t, err, ErrSessionExpired)
 		}
 	}
 

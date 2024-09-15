@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/function61/gokit/assert"
+	"github.com/function61/gokit/testing/assert"
 )
 
 func TestHostMatchesAllowList(t *testing.T) {
@@ -49,11 +49,9 @@ func TestHostMatchesAllowList(t *testing.T) {
 			matches: false,
 		},
 	} {
-		tc := tc // pin
-
 		t.Run(tc.host, func(t *testing.T) {
 			match, _ := hostMatchesAllowList(tc.host, allowList)
-			assert.Assert(t, match == tc.matches)
+			assert.Equal(t, match, tc.matches)
 		})
 	}
 }

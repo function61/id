@@ -13,12 +13,11 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/function61/gokit/envvar"
-	"github.com/function61/gokit/httputils"
-	"github.com/function61/gokit/jsonfile"
+	"github.com/function61/gokit/encoding/jsonfile"
+	"github.com/function61/gokit/net/http/httputils"
+	"github.com/function61/gokit/os/osutil"
 	"github.com/function61/id/pkg/httpauth"
 	"github.com/gorilla/mux"
-	legacyed25519 "golang.org/x/crypto/ed25519"
 	"gopkg.in/square/go-jose.v2"
 )
 
@@ -29,8 +28,6 @@ var templates, _ = template.ParseFS(templateFiles, "templates/*.html")
 
 func newHttpHandler() (http.Handler, error) {
 	router := mux.NewRouter()
-
-	rand.Seed(time.Now().UnixNano())
 
 	signer, signerPublicKey, err := loadSignerAndPublicKey()
 	if err != nil {
@@ -183,7 +180,7 @@ func loadSignerAndPublicKey() (httpauth.Signer, ed25519.PublicKey, error) {
 }
 
 func loadSigningPrivateKey() (ed25519.PrivateKey, error) {
-	pk, err := envvar.Required("SIGNING_PRIVATE_KEY")
+	pk, err := osutil.GetenvRequired("SIGNING_PRIVATE_KEY")
 	if err != nil {
 		return nil, err
 	}
@@ -195,14 +192,16 @@ func randomBackgroundImage() string {
 	maxBackgroundNumber := 20
 
 	// Intn() returns between 1 and n-1 so we'll adjust to between (1, n)
+	//nolint:gosec // weak RNG ok
+	backgroundNumber := 1 + rand.Intn(maxBackgroundNumber)
 	return fmt.Sprintf(
 		"https://function61.com/files/id-backgrounds/%d.jpg",
-		1+rand.Intn(maxBackgroundNumber))
+		backgroundNumber)
 }
 
 func makeSignerKeySet(signerPublicKey ed25519.PublicKey) ([]byte, error) {
 	jwk := jose.JSONWebKey{
-		Key: legacyed25519.PublicKey(signerPublicKey), // go-jose uses outdated module location
+		Key: signerPublicKey,
 	}
 
 	keySetJson := bytes.Buffer{}

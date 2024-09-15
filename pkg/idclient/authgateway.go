@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/function61/gokit/httputils"
+	"github.com/function61/gokit/net/http/httputils"
 	"github.com/function61/id/pkg/httpauth"
 	"github.com/gorilla/mux"
 )

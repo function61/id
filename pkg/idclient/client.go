@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/function61/gokit/ezhttp"
+	"github.com/function61/gokit/net/http/ezhttp"
 	"github.com/function61/id/pkg/idtypes"
-	legacyed25519 "golang.org/x/crypto/ed25519"
 	"gopkg.in/square/go-jose.v2"
 )
 
@@ -30,7 +29,7 @@ func (c *Client) UserByToken(ctx context.Context, token string) (*idtypes.User, 
 		ctx,
 		c.serverBaseurl+"/profile",
 		ezhttp.AuthBearer(token),
-		ezhttp.RespondsJson(user, true))
+		ezhttp.RespondsJSONAllowUnknownFields(user))
 	return user, err
 }
 
@@ -39,7 +38,7 @@ func (c *Client) ObtainPublicKey(ctx context.Context) (ed25519.PublicKey, error)
 	if _, err := ezhttp.Get(
 		ctx,
 		c.serverBaseurl+"/.well-known/jwks.json",
-		ezhttp.RespondsJson(&keySet, true),
+		ezhttp.RespondsJSONAllowUnknownFields(&keySet),
 	); err != nil {
 		return nil, err
 	}
@@ -53,8 +52,7 @@ func (c *Client) ObtainPublicKey(ctx context.Context) (ed25519.PublicKey, error)
 
 	keyInterface := firstKey.Public().Key
 
-	// go-jose uses outdated module location
-	return ed25519.PublicKey(keyInterface.(legacyed25519.PublicKey)), nil
+	return keyInterface.(ed25519.PublicKey), nil
 }
 
 func (c *Client) loginUrl(returnAfterAuth string) string {
