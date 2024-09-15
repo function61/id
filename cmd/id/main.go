@@ -25,7 +25,7 @@ func main() {
 	// AWS Lambda doesn't support giving argv, so we use an ugly hack to detect when
 	// we're in Lambda
 	if lambdautils.InLambda() {
-		lambda.StartHandler(func() lambda.Handler {
+		lambda.Start(func() lambda.Handler {
 			httpHandler, err := newHttpHandler()
 			if err != nil {
 				// cannot exit in a normal way - we've to handle errors with Lambda's semantics
