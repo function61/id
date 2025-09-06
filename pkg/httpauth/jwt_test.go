@@ -82,7 +82,7 @@ func TestTokenExpiry(t *testing.T) {
 			assert.Ok(t, err)
 			assert.Equal(t, userDetails.Id, "123")
 		} else {
-			assert.Equal(t, err, ErrSessionExpired)
+			assert.Equal(t, err, ErrTokenExpired)
 		}
 	}
 

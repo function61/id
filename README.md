@@ -5,7 +5,7 @@ Our Single-Sign-On ("SSO") server and client library for multi-tenant architectu
 
 The server works also on AWS Lambda.
 
-Signs [JWT](https://jwt.io/)s and forwards said token to the consumer site via its local
+Signs [JWT](https://jwt.io/)s and forwards said token to the consuming site via its local
 auth gateway (that sets the cookie).
 
 ![](docs/screenshot.png)
@@ -16,11 +16,11 @@ Architecture
 
 ![](docs/architecture.png)
 
-Essentially, your consumer services configure one base URL (like `https://function61.com/id`) as
+Essentially, your consuming services configure one base URL (like `https://function61.com/id`) as
 trusted. Based on that URL, the consumer library's gateway code knows where to send users for logging in,
 and that the trusted public keys are downloadable from https://function61.com/id/.well-known/jwks.json
 
-Each of these public keys can sign JWTs that the consumer code accepts.
+Each of these public keys can sign JWTs that the consuming code accepts.
 
 Our ID server implements [JSON Web Key Sets](https://auth0.com/docs/tokens/json-web-tokens/json-web-key-sets).
 
@@ -87,8 +87,8 @@ Project lead is:
 
 - aware of and understands [OWASP Top Ten](https://owasp.org/www-project-top-ten/), particularly:
 	* CSRF
-	* Unvalidated redirects](https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html).
-- aware of common JWT pitfalls
+	* [Unvalidated redirects](https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html).
+- [aware of common JWT pitfalls](https://twitter.com/joonas_fi/status/1367068764487966720)
 - a [security-minded person](https://joonas.fi/tags/infosec/)
 
 
