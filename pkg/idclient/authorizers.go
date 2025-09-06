@@ -11,6 +11,13 @@ type Authorizer func(*http.Request, *httpauth.UserDetails) bool
 
 func UserListAuthorizer(authorizedUserIds ...string) Authorizer {
 	return func(r *http.Request, userDetails *httpauth.UserDetails) bool {
+		// anonymous can never be authorized. protects from case where 2 things have gone wrong:
+		// - authorizedUserIds accidentally contains empty item
+		// - JWT was signed with an empty user ID
+		if userDetails.Id == "" {
+			return false
+		}
+
 		return slices.Contains(authorizedUserIds, userDetails.Id)
 	}
 }
