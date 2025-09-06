@@ -108,7 +108,11 @@ func (g *GatewayApi) AuthenticateAndAuthorize(
 
 // continue to current path after logging in
 func (g *GatewayApi) authUrlContinueToCurrent(r *http.Request) string {
-	currentPath := r.URL.Path + r.URL.RawQuery
+	currentPath := r.URL.Path
+	if r.URL.RawQuery != "" {
+		// RawQuery doesn't have the "?"
+		currentPath += "?" + r.URL.RawQuery
+	}
 
 	continueAfterGateway := currentPath
 
