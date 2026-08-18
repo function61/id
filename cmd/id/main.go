@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -83,7 +84,7 @@ func runStandaloneRestApi(ctx context.Context) error {
 	}
 
 	srv := &http.Server{
-		Addr:    ":80",
+		Addr:    cmp.Or(os.Getenv("ADDR"), ":80"),
 		Handler: handler,
 
 		ReadHeaderTimeout: httputils.DefaultReadHeaderTimeout,
