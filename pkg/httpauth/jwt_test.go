@@ -16,7 +16,7 @@ func TestSignAndAuthenticate(t *testing.T) {
 	signer, err := NewJwtSigner(testPrivateKey)
 	assert.Ok(t, err)
 
-	token := signer.Sign(UserDetails{Id: "123"}, "", time.Now())
+	token := signer.Sign(UserDetails{ID: "123"}, "", time.Now())
 
 	cookie := ToCookie(token)
 
@@ -31,7 +31,7 @@ func TestSignAndAuthenticate(t *testing.T) {
 
 		if err == nil {
 			// cannot print whole JWT token because it contains random data for crypto
-			return fmt.Sprintf("userid<%s> tok<%s>", userDetails.Id, userDetails.AuthTokenJwt[0:8]+"..")
+			return fmt.Sprintf("userid<%s> tok<%s>", userDetails.ID, userDetails.AuthTokenJWT[0:8]+"..")
 		}
 
 		return err.Error()
@@ -57,7 +57,7 @@ func TestSignAndAuthenticateMismatchingPublicKey(t *testing.T) {
 	authenticator, err := NewJwtAuthenticator(testMismatchingPublicKey, "")
 	assert.Ok(t, err)
 
-	token := signer.Sign(UserDetails{Id: "123"}, "", time.Now())
+	token := signer.Sign(UserDetails{ID: "123"}, "", time.Now())
 
 	_, err = authenticator.Authenticate(makeReq(ToCookie(token)))
 
@@ -72,7 +72,7 @@ func TestTokenExpiry(t *testing.T) {
 
 	t0 := time.Date(2019, 2, 19, 15, 0, 0, 0, time.UTC)
 
-	token := signer.Sign(UserDetails{Id: "123"}, "", t0)
+	token := signer.Sign(UserDetails{ID: "123"}, "", t0)
 
 	shouldBeValid := func(should bool) {
 		t.Helper()
@@ -80,7 +80,7 @@ func TestTokenExpiry(t *testing.T) {
 
 		if should {
 			assert.Ok(t, err)
-			assert.Equal(t, userDetails.Id, "123")
+			assert.Equal(t, userDetails.ID, "123")
 		} else {
 			assert.Equal(t, err, ErrTokenExpired)
 		}

@@ -16,7 +16,7 @@ const (
 )
 
 type Client struct {
-	serverBaseurl string
+	serverBaseURL string
 }
 
 func New(serverBaseurl string) *Client {
@@ -25,9 +25,7 @@ func New(serverBaseurl string) *Client {
 
 func (c *Client) UserByToken(ctx context.Context, token string) (*idtypes.User, error) {
 	user := &idtypes.User{}
-	_, err := ezhttp.Get(
-		ctx,
-		c.serverBaseurl+"/profile",
+	_, err := ezhttp.Get(ctx, c.serverBaseURL+"/profile",
 		ezhttp.AuthBearer(token),
 		ezhttp.RespondsJSONAllowUnknownFields(user))
 	return user, err
@@ -35,9 +33,7 @@ func (c *Client) UserByToken(ctx context.Context, token string) (*idtypes.User, 
 
 func (c *Client) ObtainPublicKey(ctx context.Context) (ed25519.PublicKey, error) {
 	keySet := jose.JSONWebKeySet{}
-	if _, err := ezhttp.Get(
-		ctx,
-		c.serverBaseurl+"/.well-known/jwks.json",
+	if _, err := ezhttp.Get(ctx, c.serverBaseURL+"/.well-known/jwks.json",
 		ezhttp.RespondsJSONAllowUnknownFields(&keySet),
 	); err != nil {
 		return nil, err
@@ -55,10 +51,10 @@ func (c *Client) ObtainPublicKey(ctx context.Context) (ed25519.PublicKey, error)
 	return keyInterface.(ed25519.PublicKey), nil
 }
 
-func (c *Client) loginUrl(returnAfterAuth string) string {
-	return c.serverBaseurl + "?next=" + url.QueryEscape(returnAfterAuth)
+func (c *Client) loginURL(returnAfterAuth string) string {
+	return c.serverBaseURL + "?next=" + url.QueryEscape(returnAfterAuth)
 }
 
-func (c *Client) logoutUrl() string {
-	return c.serverBaseurl + "/logout"
+func (c *Client) logoutURL() string {
+	return c.serverBaseURL + "/logout"
 }

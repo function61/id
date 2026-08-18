@@ -12,17 +12,17 @@ import (
 	"github.com/function61/id/pkg/httpauth"
 )
 
-type GatewayApi struct {
+type GatewayAPI struct {
 	client               *Client
 	audience             string
-	authenticator        httpauth.HttpRequestAuthenticator
+	authenticator        httpauth.HTTPRequestAuthenticator
 	authenticatorBuildMu sync.Mutex
 }
 
 // This auth gateway is required because the identity server cannot set cookies on our behalf.
 // The auth gateway simply takes the auth token from URL param, sets cookie and redirects forward.
 
-func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string) *GatewayApi {
+func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string) *GatewayAPI {
 	// we used to fetch the public key here, but that's not ideal. this CreateAuthGateway() is usually
 	// called on application startup to protect specified/all HTTP routes. if we were to error here,
 	// perhaps because network is down, it'd prevent starting the HTTP app.
@@ -34,7 +34,7 @@ func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string) *Gate
 	// 2. (ID server becomes back online)
 	// 3. Req 2 needs authentication - now succeeds because we re-try fetching pubkey (b/c no cached entry)
 
-	g := &GatewayApi{
+	g := &GatewayAPI{
 		client:   c,
 		audience: audience,
 	}
@@ -44,12 +44,12 @@ func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string) *Gate
 	return g
 }
 
-func (g *GatewayApi) LogoutUrl() string {
+func (g *GatewayAPI) LogoutURL() string {
 	return "/_auth/logout"
 }
 
 // wraps inner Handler with protection: 1) authentication 2) authorization
-func (g *GatewayApi) Protect(authorizer Authorizer, authorizedHandler http.Handler) http.Handler {
+func (g *GatewayAPI) Protect(authorizer Authorizer, authorizedHandler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// if this call returns nil, response was also written
 		if g.AuthenticateAndAuthorize(w, r, authorizer) != nil {
@@ -60,11 +60,7 @@ func (g *GatewayApi) Protect(authorizer Authorizer, authorizedHandler http.Handl
 
 // returns UserDetails if user is authenticated & authorized.
 // if returns nil, error response was already sent.
-func (g *GatewayApi) AuthenticateAndAuthorize(
-	w http.ResponseWriter,
-	r *http.Request,
-	authorizer Authorizer,
-) *httpauth.UserDetails {
+func (g *GatewayAPI) AuthenticateAndAuthorize(w http.ResponseWriter, r *http.Request, authorizer Authorizer) *httpauth.UserDetails {
 	authenticator, err := g.getAuthenticator()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("getAuthenticator: %v", err), http.StatusInternalServerError)
@@ -74,16 +70,16 @@ func (g *GatewayApi) AuthenticateAndAuthorize(
 	// 1) authentication
 	authentication, err := authenticator.Authenticate(r)
 	if err != nil {
-		switch {
-		case err == httpauth.ErrNoAuthToken, err == httpauth.ErrTokenExpired:
+		switch err {
+		case httpauth.ErrNoAuthToken, httpauth.ErrTokenExpired:
 			// don't just blindly redirect all requests like .js, .jpg, .css etc.
-			requestingHtml := strings.Contains(r.Header.Get("Accept"), "text/html")
+			requestingHTML := strings.Contains(r.Header.Get("Accept"), "text/html")
 
 			httputils.NoCacheHeaders(w)
 
-			if requestingHtml {
+			if requestingHTML {
 				// return via our gateway that sets the auth token
-				http.Redirect(w, r, g.authUrlContinueToCurrent(r), http.StatusFound)
+				http.Redirect(w, r, g.authURLContinueToCurrent(r), http.StatusFound)
 			} else {
 				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 			}
@@ -107,7 +103,7 @@ func (g *GatewayApi) AuthenticateAndAuthorize(
 }
 
 // continue to current path after logging in
-func (g *GatewayApi) authUrlContinueToCurrent(r *http.Request) string {
+func (g *GatewayAPI) authURLContinueToCurrent(r *http.Request) string {
 	currentPath := r.URL.Path
 	if r.URL.RawQuery != "" {
 		// RawQuery doesn't have the "?"
@@ -116,17 +112,17 @@ func (g *GatewayApi) authUrlContinueToCurrent(r *http.Request) string {
 
 	continueAfterGateway := currentPath
 
-	return g.loginUrlContinueToGateway(continueAfterGateway, r)
+	return g.loginURLContinueToGateway(continueAfterGateway, r)
 }
 
-func (g *GatewayApi) loginUrlContinueToGateway(continueAfterGateway string, r *http.Request) string {
+func (g *GatewayAPI) loginURLContinueToGateway(continueAfterGateway string, r *http.Request) string {
 	// return back from auth with our gateway that'll set the auth cookie
 	gateway := "https://" + r.Host + "/_auth/redirect?next=" + url.QueryEscape(continueAfterGateway)
 
-	return g.client.loginUrl(gateway)
+	return g.client.loginURL(gateway)
 }
 
-func (g *GatewayApi) registerGatewayRoutes(router *http.ServeMux) *GatewayApi {
+func (g *GatewayAPI) registerGatewayRoutes(router *http.ServeMux) *GatewayAPI {
 	// logs the user out from this website, but also the identity server
 	router.HandleFunc("/_auth/logout", func(w http.ResponseWriter, r *http.Request) {
 		httputils.NoCacheHeaders(w)
@@ -136,7 +132,7 @@ func (g *GatewayApi) registerGatewayRoutes(router *http.ServeMux) *GatewayApi {
 
 		http.SetCookie(w, httpauth.DeleteLoginCookie())
 
-		http.Redirect(w, r, g.client.logoutUrl(), http.StatusFound)
+		http.Redirect(w, r, g.client.logoutURL(), http.StatusFound)
 	})
 
 	router.HandleFunc("/_auth/redirect", func(w http.ResponseWriter, r *http.Request) {
@@ -172,13 +168,14 @@ func (g *GatewayApi) registerGatewayRoutes(router *http.ServeMux) *GatewayApi {
 
 		http.SetCookie(w, httpauth.ToCookie(jwt))
 
+		//nolint:gosec // not open redirect because has been validated as relative
 		http.Redirect(w, r, next, http.StatusFound)
 	})
 
 	return g
 }
 
-func (g *GatewayApi) getAuthenticator() (httpauth.HttpRequestAuthenticator, error) {
+func (g *GatewayAPI) getAuthenticator() (httpauth.HTTPRequestAuthenticator, error) {
 	g.authenticatorBuildMu.Lock()
 	defer g.authenticatorBuildMu.Unlock()
 
@@ -199,12 +196,16 @@ func (g *GatewayApi) getAuthenticator() (httpauth.HttpRequestAuthenticator, erro
 	return g.authenticator, nil
 }
 
+// https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
 func validateRelativeRedirect(path string) (string, error) {
-	// https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html
-	// TODO: research if this is adequate
-	if strings.HasPrefix(path, "/") && !strings.HasPrefix(path, "//") {
-		return path, nil
+	parsed, err := url.Parse(path)
+	if err != nil {
+		return "", err
 	}
 
-	return "", fmt.Errorf("not a relative URL: %s", path)
+	if parsed.IsAbs() || parsed.Scheme != "" || parsed.Host != "" {
+		return "", fmt.Errorf("not a relative URL: %s", path)
+	}
+
+	return path, nil
 }

@@ -25,7 +25,7 @@ func NewJwtSigner(privKey ed25519.PrivateKey) (Signer, error) {
 func (j *jwtSigner) Sign(userDetails UserDetails, audience string, now time.Time) string {
 	tokenBytes, err := jwt.Sign(jwt.EdDSA, j.privKey, jwt.Claims{
 		Audience: jwt.Audience{audience},
-		Subject:  userDetails.Id,
+		Subject:  userDetails.ID,
 		Expiry:   now.Add(24 * time.Hour).Unix(),
 	})
 	if err != nil {
@@ -47,7 +47,7 @@ type jwtAuthenticator struct {
 	now func() time.Time // for testing
 }
 
-func NewJwtAuthenticator(publicKey ed25519.PublicKey, audience string) (HttpRequestAuthenticator, error) {
+func NewJwtAuthenticator(publicKey ed25519.PublicKey, audience string) (HTTPRequestAuthenticator, error) {
 	return &jwtAuthenticator{
 		publicKey: publicKey,
 

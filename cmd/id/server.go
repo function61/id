@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -28,7 +28,7 @@ var assets embed.FS
 
 var templates, _ = template.ParseFS(templateFiles, "templates/*.html")
 
-func newHttpHandler() (http.Handler, error) {
+func newHTTPHandler() (http.Handler, error) {
 	router := http.NewServeMux()
 
 	signer, signerPublicKey, err := loadSignerAndPublicKey()
@@ -36,7 +36,7 @@ func newHttpHandler() (http.Handler, error) {
 		return nil, err
 	}
 
-	signerPubKeySetJson, err := makeSignerKeySet(signerPublicKey)
+	signerPubKeySetJSON, err := makeSignerKeySet(signerPublicKey)
 	if err != nil {
 		return nil, fmt.Errorf("makeSignerKeySet: %w", err)
 	}
@@ -100,17 +100,18 @@ func newHttpHandler() (http.Handler, error) {
 			return
 		}
 
-		userDetails := httpauth.NewUserDetails(user.Id, "")
+		userDetails := httpauth.NewUserDetails(user.ID, "")
 
 		jwt := signer.Sign(*userDetails, audience, time.Now())
 
-		log.Printf("login ok for %s", email)
+		slog.Info("login ok", "email", email)
 
 		queryParams := nextValidated.Query()
 		queryParams.Set("token", jwt)
 		nextValidated.RawQuery = queryParams.Encode()
 
 		httputils.NoCacheHeaders(w)
+		//nolint:gosec // not open redirect (host has been validated to be in allowlist)
 		http.Redirect(w, r, nextValidated.String(), http.StatusFound)
 	})
 
@@ -121,7 +122,7 @@ func newHttpHandler() (http.Handler, error) {
 			return
 		}
 
-		user := userRegistry.UserById(auth.Id)
+		user := userRegistry.UserByID(auth.ID)
 		if user == nil {
 			http.Error(w, "authenticated user not found", http.StatusInternalServerError)
 			return
@@ -142,7 +143,7 @@ func newHttpHandler() (http.Handler, error) {
 	router.HandleFunc("GET /id/.well-known/jwks.json", func(w http.ResponseWriter, r *http.Request) {
 		// https://tools.ietf.org/html/rfc7517
 		w.Header().Set("Content-Type", "application/jwk-set+json")
-		_, _ = w.Write(signerPubKeySetJson)
+		_, _ = w.Write(signerPubKeySetJSON)
 	})
 
 	router.Handle("GET /id/assets/", http.StripPrefix("/id", http.FileServerFS(assets)))
@@ -156,17 +157,17 @@ func getValidatedNext(r *http.Request, redirectAllowList map[string]string) (*ur
 		return nil, "", errors.New("'next' not set")
 	}
 
-	nextUrl, err := url.Parse(next)
+	nextURL, err := url.Parse(next)
 	if err != nil {
 		return nil, "", fmt.Errorf("'next' not valid URL: %v", err)
 	}
 
-	matches, audience := hostMatchesAllowList(nextUrl.Host, redirectAllowList)
+	matches, audience := hostMatchesAllowList(nextURL.Host, redirectAllowList)
 	if !matches {
-		return nil, "", fmt.Errorf("'next' hostname (%s) not in allow list", nextUrl.Host)
+		return nil, "", fmt.Errorf("'next' hostname (%s) not in allow list", nextURL.Host)
 	}
 
-	return nextUrl, audience, nil
+	return nextURL, audience, nil
 }
 
 func loadSignerAndPublicKey() (httpauth.Signer, ed25519.PublicKey, error) {
@@ -207,12 +208,12 @@ func makeSignerKeySet(signerPublicKey ed25519.PublicKey) ([]byte, error) {
 		Key: signerPublicKey,
 	}
 
-	keySetJson := bytes.Buffer{}
-	if err := jsonfile.Marshal(&keySetJson, jose.JSONWebKeySet{
+	keySetJSON := bytes.Buffer{}
+	if err := jsonfile.Marshal(&keySetJSON, jose.JSONWebKeySet{
 		Keys: []jose.JSONWebKey{jwk},
 	}); err != nil {
 		return nil, err
 	}
 
-	return keySetJson.Bytes(), nil
+	return keySetJSON.Bytes(), nil
 }

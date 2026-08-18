@@ -33,9 +33,9 @@ func (u *userRegistry) CheckLogin(email string, givenPassword string) *idtypes.U
 	return &userData.user
 }
 
-func (u *userRegistry) UserById(id string) *idtypes.User {
+func (u *userRegistry) UserByID(id string) *idtypes.User {
 	for _, userData := range u.usersData {
-		if userData.user.Id == id {
+		if userData.user.ID == id {
 			return &userData.user
 		}
 	}

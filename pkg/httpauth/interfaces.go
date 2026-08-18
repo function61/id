@@ -16,15 +16,15 @@ type RequestContext struct {
 }
 
 type UserDetails struct {
-	Id           string
-	AuthTokenJwt string // the JWT token that was used for auth
+	ID           string
+	AuthTokenJWT string // the JWT token that was used for auth
 }
 
-func NewUserDetails(id string, authTokenJwt string) *UserDetails {
-	return &UserDetails{id, authTokenJwt}
+func NewUserDetails(id string, authTokenJWT string) *UserDetails {
+	return &UserDetails{id, authTokenJWT}
 }
 
-type HttpRequestAuthenticator interface {
+type HTTPRequestAuthenticator interface {
 	// authenticates a Request. error is ErrNoAuthToken if no auth details and ErrSessionExpired if auth token expired
 	Authenticate(req *http.Request) (*UserDetails, error)
 	AuthenticateJwtString(jwtString string) (*UserDetails, error)

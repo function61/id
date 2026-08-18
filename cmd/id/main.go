@@ -6,7 +6,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -26,11 +26,11 @@ func main() {
 	// we're in Lambda
 	if lambdautils.InLambda() {
 		lambda.Start(func() lambda.Handler {
-			httpHandler, err := newHttpHandler()
+			httpHandler, err := newHTTPHandler()
 			if err != nil {
 				// cannot exit in a normal way - we've to handle errors with Lambda's semantics
 				// if we want any visibility into errors in Lambda
-				return lambdaStaticErrorHandler(err, rootLogger)
+				return lambdaStaticErrorHandler(err)
 			}
 
 			return lambdautils.NewLambdaHttpHandlerAdapter(httpHandler)
@@ -49,7 +49,7 @@ func main() {
 		Short: "Start the standalone server",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			osutil.ExitIfError(runStandaloneRestApi(
+			osutil.ExitIfError(runStandaloneRestAPI(
 				osutil.CancelOnInterruptOrTerminate(rootLogger)))
 		},
 	})
@@ -77,8 +77,8 @@ func main() {
 }
 
 // for standalone use
-func runStandaloneRestApi(ctx context.Context) error {
-	handler, err := newHttpHandler()
+func runStandaloneRestAPI(ctx context.Context) error {
+	handler, err := newHTTPHandler()
 	if err != nil {
 		return err
 	}
@@ -98,8 +98,8 @@ type errorLambdaHandler struct {
 	error
 }
 
-func lambdaStaticErrorHandler(err error, logger *log.Logger) *errorLambdaHandler {
-	logex.Levels(logger).Error.Println(err)
+func lambdaStaticErrorHandler(err error) *errorLambdaHandler {
+	slog.Error("error", "err", err)
 
 	return &errorLambdaHandler{err}
 }

@@ -11,10 +11,10 @@ import (
 
 func TestAuthUrlContinueToCurrent(t *testing.T) {
 	url_ := Must(url.Parse("https://loppi.org/assets/view?id=foobar"))
-	g := GatewayApi{
+	g := GatewayAPI{
 		client: New(Function61),
 	}
-	u := g.authUrlContinueToCurrent(&http.Request{
+	u := g.authURLContinueToCurrent(&http.Request{
 		Host: url_.Host,
 		URL:  url_,
 	})

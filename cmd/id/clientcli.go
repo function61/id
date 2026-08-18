@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cmp"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -29,7 +30,7 @@ func clientEntry() *cobra.Command {
 			osutil.ExitIfError(userGet(
 				osutil.CancelOnInterruptOrTerminate(nil),
 				args[1],
-				serverUrlOrDefaultToFunction61(args[0]),
+				serverURLOrDefaultToFunction61(args[0]),
 				os.Stdout))
 		},
 	})
@@ -60,7 +61,7 @@ func clientEntry() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			osutil.ExitIfError(func() error {
-				client := idclient.New(serverUrlOrDefaultToFunction61(args[0]))
+				client := idclient.New(serverURLOrDefaultToFunction61(args[0]))
 
 				pubKey, err := client.ObtainPublicKey(osutil.CancelOnInterruptOrTerminate(nil))
 				if err != nil {
@@ -77,16 +78,12 @@ func clientEntry() *cobra.Command {
 	return cmd
 }
 
-func serverUrlOrDefaultToFunction61(serverUrl string) string {
-	if serverUrl != "" {
-		return serverUrl
-	} else {
-		return idclient.Function61
-	}
+func serverURLOrDefaultToFunction61(serverURL string) string {
+	return cmp.Or(serverURL, idclient.Function61)
 }
 
-func userGet(ctx context.Context, token string, serverUrl string, output io.Writer) error {
-	client := idclient.New(serverUrl)
+func userGet(ctx context.Context, token string, serverURL string, output io.Writer) error {
+	client := idclient.New(serverURL)
 
 	user, err := client.UserByToken(ctx, token)
 	if err != nil {
