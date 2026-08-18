@@ -14,7 +14,46 @@ auth gateway (that sets the cookie).
 Architecture
 ------------
 
-![](docs/architecture.png)
+```mermaid
+flowchart LR
+    U([User])
+
+    subgraph SERVICE["Your service"]
+        subgraph CLIENT["function61/id - client"]
+            subgraph AUTH["Authentication & authorization"]
+                OK{"Ok?"}
+            end
+
+            subgraph GW["Gateway"]
+                REDIRECT["/_auth/redirect<br/>(to original URL)"]
+            end
+
+            INIT["Initialization"]
+            AUTHENTICATE["Authenticate()"]
+            PUBKEY["JWT trusted<br/>signing pubkey"]
+
+            AUTHENTICATE -.-> OK
+            INIT -->|Configure| PUBKEY
+            PUBKEY -->|Used in| AUTHENTICATE
+        end
+
+        PROTECTED["/protected-endpoint"]
+
+        OK -->|Yes| PROTECTED
+    end
+
+    subgraph ID["function61/id - server"]
+        LOGIN["/login"]
+        JWKS["/.well-known/jwks.json"]
+    end
+
+    U -->|Request /protected-endpoint| OK
+    OK -->|No, redirect| LOGIN
+    LOGIN -->|Auth done, redirect| REDIRECT
+    REDIRECT -->|Set auth cookie & redirect| U
+
+    JWKS -->|Download| INIT
+```
 
 Essentially, your consuming services configure one base URL (like `https://function61.com/id`) as
 trusted. Based on that URL, the consumer library's gateway code knows where to send users for logging in,
