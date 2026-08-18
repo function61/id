@@ -23,6 +23,9 @@ import (
 //go:embed templates
 var templateFiles embed.FS
 
+//go:embed assets
+var assets embed.FS
+
 var templates, _ = template.ParseFS(templateFiles, "templates/*.html")
 
 func newHttpHandler() (http.Handler, error) {
@@ -142,6 +145,8 @@ func newHttpHandler() (http.Handler, error) {
 		_, _ = w.Write(signerPubKeySetJson)
 	})
 
+	router.Handle("GET /id/assets/", http.StripPrefix("/id", http.FileServerFS(assets)))
+
 	return router, nil
 }
 
@@ -188,14 +193,13 @@ func loadSigningPrivateKey() (ed25519.PrivateKey, error) {
 }
 
 func randomBackgroundImage() string {
+	// FIXME: resolve dynamically
 	maxBackgroundNumber := 20
 
 	// Intn() returns between 1 and n-1 so we'll adjust to between (1, n)
 	//nolint:gosec // weak RNG ok
 	backgroundNumber := 1 + rand.Intn(maxBackgroundNumber)
-	return fmt.Sprintf(
-		"https://function61.com/files/id-backgrounds/%d.jpg",
-		backgroundNumber)
+	return fmt.Sprintf("/id/assets/bg/%d.jpg", backgroundNumber)
 }
 
 func makeSignerKeySet(signerPublicKey ed25519.PublicKey) ([]byte, error) {
