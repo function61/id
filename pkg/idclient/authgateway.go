@@ -161,12 +161,13 @@ func (g *GatewayAPI) registerGatewayRoutes(router *http.ServeMux) *GatewayAPI {
 		// param can't set garbage JWT to force logout the user.
 		//
 		// the attacker still can set a valid JWT, so in effect can change victim's user.
-		if _, err := authenticator.AuthenticateJwtString(jwt); err != nil {
+		userDetails, err := authenticator.AuthenticateJwtString(jwt)
+		if err != nil {
 			http.Error(w, "AuthenticateJwtString: "+err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		http.SetCookie(w, httpauth.ToCookie(jwt))
+		http.SetCookie(w, httpauth.ToCookie(jwt, &userDetails.Expiry))
 
 		//nolint:gosec // not open redirect because has been validated as relative
 		http.Redirect(w, r, next, http.StatusFound)

@@ -22,11 +22,11 @@ func NewJwtSigner(privKey ed25519.PrivateKey) (Signer, error) {
 	}, nil
 }
 
-func (j *jwtSigner) Sign(userDetails UserDetails, audience string, now time.Time) string {
+func (j *jwtSigner) Sign(userDetails UserDetails, audience string, expiry time.Time) string {
 	tokenBytes, err := jwt.Sign(jwt.EdDSA, j.privKey, jwt.Claims{
 		Audience: jwt.Audience{audience},
 		Subject:  userDetails.ID,
-		Expiry:   now.Add(24 * time.Hour).Unix(),
+		Expiry:   expiry.Unix(),
 	})
 	if err != nil {
 		panic(err)
@@ -97,7 +97,7 @@ func (j *jwtAuthenticator) AuthenticateJwtString(jwtString string) (*UserDetails
 			return nil, err
 		}
 	} else {
-		return NewUserDetails(claims.Subject, jwtString), nil
+		return NewUserDetails(claims.Subject, jwtString, claims.ExpiresAt()), nil
 	}
 }
 

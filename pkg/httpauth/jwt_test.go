@@ -16,9 +16,10 @@ func TestSignAndAuthenticate(t *testing.T) {
 	signer, err := NewJwtSigner(testPrivateKey)
 	assert.Ok(t, err)
 
-	token := signer.Sign(UserDetails{ID: "123"}, "", time.Now())
+	userDetails := UserDetails{ID: "123"}
+	token := signer.Sign(userDetails, "", time.Now().Add(24*time.Hour))
 
-	cookie := ToCookie(token)
+	cookie := ToCookie(token, nil)
 
 	assert.Equal(t, cookie.Name, "auth")
 	assert.Equal(t, cookie.Value, token)
@@ -57,9 +58,9 @@ func TestSignAndAuthenticateMismatchingPublicKey(t *testing.T) {
 	authenticator, err := NewJwtAuthenticator(testMismatchingPublicKey, "")
 	assert.Ok(t, err)
 
-	token := signer.Sign(UserDetails{ID: "123"}, "", time.Now())
+	token := signer.Sign(UserDetails{ID: "123"}, "", time.Now().Add(24*time.Hour))
 
-	_, err = authenticator.Authenticate(makeReq(ToCookie(token)))
+	_, err = authenticator.Authenticate(makeReq(ToCookie(token, nil)))
 
 	assert.Equal(t, err.Error(), "jwt: invalid token signature")
 }
@@ -72,11 +73,11 @@ func TestTokenExpiry(t *testing.T) {
 
 	t0 := time.Date(2019, 2, 19, 15, 0, 0, 0, time.UTC)
 
-	token := signer.Sign(UserDetails{ID: "123"}, "", t0)
+	token := signer.Sign(UserDetails{ID: "123"}, "", t0.Add(24*time.Hour))
 
 	shouldBeValid := func(should bool) {
 		t.Helper()
-		userDetails, err := authenticator.Authenticate(makeReq(ToCookie(token)))
+		userDetails, err := authenticator.Authenticate(makeReq(ToCookie(token, nil)))
 
 		if should {
 			assert.Ok(t, err)

@@ -100,9 +100,9 @@ func newHTTPHandler() (http.Handler, error) {
 			return
 		}
 
-		userDetails := httpauth.NewUserDetails(user.ID, "")
+		expiry := time.Now().Add(24 * time.Hour)
 
-		jwt := signer.Sign(*userDetails, audience, time.Now())
+		jwt := signer.Sign(*httpauth.NewUserDetails(user.ID, "", expiry), audience, expiry)
 
 		slog.Info("login ok", "email", email)
 

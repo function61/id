@@ -17,11 +17,12 @@ type RequestContext struct {
 
 type UserDetails struct {
 	ID           string
+	Expiry       time.Time
 	AuthTokenJWT string // the JWT token that was used for auth
 }
 
-func NewUserDetails(id string, authTokenJWT string) *UserDetails {
-	return &UserDetails{id, authTokenJWT}
+func NewUserDetails(id string, authTokenJWT string, expiry time.Time) *UserDetails {
+	return &UserDetails{id, expiry, authTokenJWT}
 }
 
 type HTTPRequestAuthenticator interface {
@@ -31,7 +32,7 @@ type HTTPRequestAuthenticator interface {
 }
 
 type Signer interface {
-	Sign(userDetails UserDetails, audience string, now time.Time) string
+	Sign(userDetails UserDetails, audience string, expiry time.Time) string
 }
 
 // if returns nul, request handling is aborted.
