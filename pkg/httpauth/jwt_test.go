@@ -19,7 +19,7 @@ func TestSignAndAuthenticate(t *testing.T) {
 	userDetails := UserDetails{ID: "123"}
 	token := signer.Sign(userDetails, "", time.Now().Add(24*time.Hour))
 
-	cookie := ToCookie(token, nil)
+	cookie := ToCookie(token, nil, "")
 
 	assert.Equal(t, cookie.Name, "auth")
 	assert.Equal(t, cookie.Value, token)
@@ -60,7 +60,7 @@ func TestSignAndAuthenticateMismatchingPublicKey(t *testing.T) {
 
 	token := signer.Sign(UserDetails{ID: "123"}, "", time.Now().Add(24*time.Hour))
 
-	_, err = authenticator.Authenticate(makeReq(ToCookie(token, nil)))
+	_, err = authenticator.Authenticate(makeReq(ToCookie(token, nil, "")))
 
 	assert.Equal(t, err.Error(), "jwt: invalid token signature")
 }
@@ -77,7 +77,7 @@ func TestTokenExpiry(t *testing.T) {
 
 	shouldBeValid := func(should bool) {
 		t.Helper()
-		userDetails, err := authenticator.Authenticate(makeReq(ToCookie(token, nil)))
+		userDetails, err := authenticator.Authenticate(makeReq(ToCookie(token, nil, "")))
 
 		if should {
 			assert.Ok(t, err)

@@ -15,6 +15,7 @@ import (
 type GatewayAPI struct {
 	client               *Client
 	audience             string
+	subroot              string
 	authenticator        httpauth.HTTPRequestAuthenticator
 	authenticatorBuildMu sync.Mutex
 }
@@ -22,7 +23,7 @@ type GatewayAPI struct {
 // This auth gateway is required because the identity server cannot set cookies on our behalf.
 // The auth gateway simply takes the auth token from URL param, sets cookie and redirects forward.
 
-func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string) *GatewayAPI {
+func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string, subroot string) *GatewayAPI {
 	// we used to fetch the public key here, but that's not ideal. this CreateAuthGateway() is usually
 	// called on application startup to protect specified/all HTTP routes. if we were to error here,
 	// perhaps because network is down, it'd prevent starting the HTTP app.
@@ -37,6 +38,7 @@ func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string) *Gate
 	g := &GatewayAPI{
 		client:   c,
 		audience: audience,
+		subroot:  subroot,
 	}
 
 	g.registerGatewayRoutes(router)
@@ -45,7 +47,7 @@ func (c *Client) CreateAuthGateway(router *http.ServeMux, audience string) *Gate
 }
 
 func (g *GatewayAPI) LogoutURL() string {
-	return "/_auth/logout"
+	return g.subroot + "/_auth/logout"
 }
 
 // wraps inner Handler with protection: 1) authentication 2) authorization
@@ -117,25 +119,13 @@ func (g *GatewayAPI) authURLContinueToCurrent(r *http.Request) string {
 
 func (g *GatewayAPI) loginURLContinueToGateway(continueAfterGateway string, r *http.Request) string {
 	// return back from auth with our gateway that'll set the auth cookie
-	gateway := "https://" + r.Host + "/_auth/redirect?next=" + url.QueryEscape(continueAfterGateway)
+	gateway := "https://" + r.Host + g.subroot + "/_auth/redirect?next=" + url.QueryEscape(continueAfterGateway)
 
 	return g.client.loginURL(gateway)
 }
 
 func (g *GatewayAPI) registerGatewayRoutes(router *http.ServeMux) *GatewayAPI {
-	// logs the user out from this website, but also the identity server
-	router.HandleFunc("/_auth/logout", func(w http.ResponseWriter, r *http.Request) {
-		httputils.NoCacheHeaders(w)
-
-		// TODO: validate session, so an attacker can't force logout of user? this could be
-		//       just enough due to cookie's SameSite=Strict ?
-
-		http.SetCookie(w, httpauth.DeleteLoginCookie())
-
-		http.Redirect(w, r, g.client.logoutURL(), http.StatusFound)
-	})
-
-	router.HandleFunc("/_auth/redirect", func(w http.ResponseWriter, r *http.Request) {
+	router.HandleFunc(g.subroot+"/_auth/redirect", func(w http.ResponseWriter, r *http.Request) {
 		// better set no-cache headers here, because URL already contains sensitive info
 		httputils.NoCacheHeaders(w)
 
@@ -167,10 +157,22 @@ func (g *GatewayAPI) registerGatewayRoutes(router *http.ServeMux) *GatewayAPI {
 			return
 		}
 
-		http.SetCookie(w, httpauth.ToCookie(jwt, &userDetails.Expiry))
+		http.SetCookie(w, httpauth.ToCookie(jwt, &userDetails.Expiry, g.subroot))
 
 		//nolint:gosec // not open redirect because has been validated as relative
 		http.Redirect(w, r, next, http.StatusFound)
+	})
+
+	// logs the user out from this website, but also the identity server
+	router.HandleFunc(g.subroot+"/_auth/logout", func(w http.ResponseWriter, r *http.Request) {
+		httputils.NoCacheHeaders(w)
+
+		// TODO: validate session, so an attacker can't force logout of user? this could be
+		//       just enough due to cookie's SameSite=Strict ?
+
+		http.SetCookie(w, httpauth.DeleteLoginCookie(g.subroot))
+
+		http.Redirect(w, r, g.client.logoutURL(), http.StatusFound)
 	})
 
 	return g
